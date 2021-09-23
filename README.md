@@ -1,2 +1,2 @@
-# go-work
-Worker pattern implementation, written in Go.
+# go-internal
+Internal library for go apps within the organization.
