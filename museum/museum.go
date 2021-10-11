@@ -18,14 +18,13 @@ import (
 
 	"github.com/hashicorp/go-version"
 
-	"github.com/pghq/go-museum/museum/errors"
-	"github.com/pghq/go-museum/museum/health"
+	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/pghq/go-museum/museum/diagnostic/health"
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
 	"github.com/pghq/go-museum/museum/internal/middleware/cors"
 	"github.com/pghq/go-museum/museum/internal/middleware/monitor"
 	"github.com/pghq/go-museum/museum/internal/router"
-	"github.com/pghq/go-museum/museum/log"
 )
 
 const (
@@ -68,8 +67,6 @@ func New(opts ...internal.AppOption) (*App, error) {
 		return nil, err
 	}
 
-	log.Init()
-
 	return app, nil
 }
 
@@ -95,4 +92,32 @@ func defaultConfig() *internal.AppConfig {
 	}
 
 	return config
+}
+
+// versionOption is an option for specifying the app version.
+type versionOption string
+
+func (o versionOption) Apply(conf *internal.AppConfig) {
+	if conf != nil {
+		conf.Version = string(o)
+	}
+}
+
+// Version creates a new version option for the app.
+func Version(v string) internal.AppOption{
+	return versionOption(v)
+}
+
+// environmentOption is an option for specifying the app environment.
+type environmentOption string
+
+func (o environmentOption) Apply(conf *internal.AppConfig) {
+	if conf != nil {
+		conf.Environment = string(o)
+	}
+}
+
+// Environment creates a new environment option for the app.
+func Environment(environment string) internal.AppOption{
+	return environmentOption(environment)
 }

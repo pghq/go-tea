@@ -25,14 +25,17 @@ type clock struct {
 	now func() time.Time
 }
 
+// Now gets the current time
 func (c *clock) Now() time.Time{
 	return c.now()
 }
 
+// Start gets the clock start time
 func (c *clock) Start() time.Time{
 	return c.start
 }
 
+// From sets the source for getting the current time
 func (c *clock) From(now func() time.Time) internal.Clock{
 	c.now = now
 	return c

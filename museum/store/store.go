@@ -10,18 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package middleware provides common request/response middlewares.
-package middleware
+// Package store provides resources for data persistence and retrieval.
+package store
 
-import "net/http"
-
-// Middleware represents a handler that is called to for example,
-// modify request/response before or after the principal handler is called.
-// Each Middleware is responsible for calling the next middleware in
-// the chain (or not if continued execution is not desired)
-type Middleware func(http.Handler) http.Handler
-
-// Handle creates an http handler from the middleware
-func (m Middleware) Handle(h http.Handler) http.Handler{
-	return m(h)
+// Item is an interface for any single object in the database.
+type Item interface {
+	Map() map[string]interface{}
+	Validate() error
 }

@@ -22,4 +22,6 @@ app, err := museum.New()
 if err != nil{
     panic(err)
 }
+
+// TODO: See tests for specific use cases...
 ```

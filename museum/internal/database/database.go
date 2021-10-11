@@ -33,10 +33,12 @@ type Transaction interface {
 	Rollback() error
 }
 
+// Communicator represents a statement encoder
 type Communicator interface {
 	Statement() (string, []interface{}, error)
 }
 
+// Cursor represents an iterator like object for paginated db responses
 type Cursor interface {
 	Next() bool
 	Decode(values ...interface{}) error
@@ -44,6 +46,7 @@ type Cursor interface {
 	Error() error
 }
 
+// Query represents a query builder
 type Query interface {
 	Communicator
 	Secondary() Query
@@ -58,6 +61,7 @@ type Query interface {
 	Execute(ctx context.Context) (Cursor, error)
 }
 
+// Add represents a command to add items to the collection
 type Add interface {
 	Communicator
 	To(collection string) Add
@@ -67,6 +71,7 @@ type Add interface {
 	Execute(ctx context.Context) (uint, error)
 }
 
+// Remove represents a command to remove items from the collection
 type Remove interface {
 	Communicator
 	From(collection string) Remove

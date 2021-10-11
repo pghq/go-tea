@@ -12,8 +12,10 @@ require (
 	github.com/jackc/pgconn v1.10.0
 	github.com/jackc/pgerrcode v0.0.0-20201024163028-a0d42d470451
 	github.com/jackc/pgx/v4 v4.13.0
+	github.com/pghq/go-eque v0.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.8.0
 	github.com/rs/zerolog v1.25.0
 	github.com/stretchr/testify v1.7.0
+	github.com/teambition/rrule-go v1.7.2
 )

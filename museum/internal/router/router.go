@@ -27,36 +27,42 @@ type Router struct {
 	mux *mux.Router
 }
 
+// Get adds a handler for the path using the GET http method
 func (r *Router) Get(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).Methods("GET", "OPTIONS")
 
 	return r
 }
 
+// Put adds a handler for the path using the PUT http method
 func (r *Router) Put(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).Methods("PUT", "OPTIONS")
 
 	return r
 }
 
+// Post adds a handler for the path using the POST http method
 func (r *Router) Post(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).Methods("POST", "OPTIONS")
 
 	return r
 }
 
+// Delete adds a handler for the path using the DELETE http method
 func (r *Router) Delete(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).Methods("DELETE", "OPTIONS")
 
 	return r
 }
 
+// At creates a sub-router for handling requests at a sub-path
 func (r *Router) At(path string) *Router {
 	return &Router{
 		mux: r.mux.PathPrefix(path).Subrouter(),
 	}
 }
 
+// Middleware adds a handler to execute before/after the principle request handler
 func (r *Router) Middleware(middlewares ...middleware.Middleware) *Router {
 	for _, m := range middlewares{
 		r.mux.Use(mux.MiddlewareFunc(m))
