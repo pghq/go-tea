@@ -28,31 +28,31 @@ import (
 
 const (
 	// DefaultInterval is the default period between checking tasks to schedule
-	DefaultInterval    = time.Millisecond
+	DefaultInterval = time.Millisecond
 
 	// DefaultEnqueueTimeout is the default time allowed for queue write ops
-	DefaultEnqueueTimeout    = 10 * time.Millisecond
+	DefaultEnqueueTimeout = 10 * time.Millisecond
 
 	// DefaultDequeueTimeout is the default time allowed for queue read ops
-	DefaultDequeueTimeout    = 10 * time.Millisecond
+	DefaultDequeueTimeout = 10 * time.Millisecond
 )
 
 // Scheduler is an instance of a persistent background scheduler
 type Scheduler struct {
-	interval   time.Duration
-	signals struct{
-		stop       chan struct{}
-		stopping   chan struct{}
-		stopped chan struct{}
+	interval time.Duration
+	signals  struct {
+		stop     chan struct{}
+		stopping chan struct{}
+		stopped  chan struct{}
 	}
-	stopped bool
-	queue eque.Queue
+	stopped        bool
+	queue          eque.Queue
 	enqueueTimeout time.Duration
 	dequeueTimeout time.Duration
-	lock sync.RWMutex
-	tasks map[string]*Task
-	completed chan *Task
-	wg sync.WaitGroup
+	lock           sync.RWMutex
+	tasks          map[string]*Task
+	completed      chan *Task
+	wg             sync.WaitGroup
 }
 
 // Every sets the interval for checking for new jobs to scheduler.
@@ -77,7 +77,7 @@ func (s *Scheduler) DequeueTimeout(timeout time.Duration) *Scheduler {
 }
 
 // Start begins scheduling tasks.
-func (s *Scheduler) Start(after ...func()){
+func (s *Scheduler) Start(after ...func()) {
 	s.stopped = false
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -85,7 +85,7 @@ func (s *Scheduler) Start(after ...func()){
 	s.wg.Add(1)
 	go s.start(ctx)
 	log.Info("scheduler: started")
-	for _, f := range after{
+	for _, f := range after {
 		f()
 	}
 	<-s.signals.stop
@@ -97,41 +97,41 @@ func (s *Scheduler) Start(after ...func()){
 	}()
 
 	select {
-		case <-wait:
-		case <-s.signals.stop:
+	case <-wait:
+	case <-s.signals.stop:
 	}
 	s.signals.stopped <- struct{}{}
 	log.Info("scheduler: stopped")
 }
 
 // Stop stops the scheduler and waits for background jobs to finish.
-func (s *Scheduler) Stop(){
+func (s *Scheduler) Stop() {
 	s.signals.stop <- struct{}{}
 	<-s.signals.stopped
 	s.stopped = true
 }
 
 // IsStopped checks if the scheduler has completely stopped.
-func (s *Scheduler) IsStopped() bool{
+func (s *Scheduler) IsStopped() bool {
 	return s.stopped
 }
 
 // IsStopping checks if the scheduler is awaiting a complete stop.
-func (s *Scheduler) IsStopping() bool{
+func (s *Scheduler) IsStopping() bool {
 	return len(s.signals.stopping) > 0
 }
 
 // Add adds a task to be scheduled.
-func (s *Scheduler) Add(tasks ...*Task) *Scheduler{
-	for _, task := range tasks{
-		if task.Id == ""{
+func (s *Scheduler) Add(tasks ...*Task) *Scheduler {
+	for _, task := range tasks {
+		if task.Id == "" {
 			continue
 		}
 
 		s.lock.RLock()
 		_, present := s.tasks[task.Id]
 		s.lock.RUnlock()
-		if present{
+		if present {
 			log.Infof("scheduler: task=%s already in ledger", task.Id)
 			continue
 		}
@@ -146,7 +146,7 @@ func (s *Scheduler) Add(tasks ...*Task) *Scheduler{
 }
 
 // Worker creates a new worker for handling scheduled tasks.
-func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker{
+func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 	h := func(ctx context.Context, _ func()) {
 		log.Debug("scheduler.worker.job: started")
 		for {
@@ -188,13 +188,13 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker{
 	return w
 }
 
-func (s *Scheduler) start(ctx context.Context){
+func (s *Scheduler) start(ctx context.Context) {
 	defer s.wg.Done()
 	stopping := make(chan struct{}, 1)
 	go func() {
 		for {
 			<-time.After(s.interval)
-			if s.IsStopping(){
+			if s.IsStopping() {
 				stopping <- struct{}{}
 				log.Info("scheduler: background task #1 stopped")
 				return
@@ -203,17 +203,17 @@ func (s *Scheduler) start(ctx context.Context){
 			now := time.Now()
 			s.lock.RLock()
 			for _, task := range s.tasks {
-				if !task.Lock(){
+				if !task.Lock() {
 					continue
 				}
 
-				if task.IsComplete(){
+				if task.IsComplete() {
 					s.completed <- task
 					task.Unlock()
 					continue
 				}
 
-				if !task.CanSchedule(now){
+				if !task.CanSchedule(now) {
 					task.Unlock()
 					continue
 				}
@@ -223,7 +223,7 @@ func (s *Scheduler) start(ctx context.Context){
 					ctx, cancel := context.WithTimeout(ctx, s.enqueueTimeout)
 					defer cancel()
 
-					if err := s.queue.Enqueue(ctx, task.Id, task); err != nil{
+					if err := s.queue.Enqueue(ctx, task.Id, task); err != nil {
 						errors.Emit(err)
 						return
 					}
@@ -236,18 +236,18 @@ func (s *Scheduler) start(ctx context.Context){
 	}()
 
 	stopped := make(chan struct{})
-	go func(){
+	go func() {
 		for {
 			<-time.After(s.interval)
-			if len(stopping) != 0{
+			if len(stopping) != 0 {
 				stopped <- struct{}{}
 				log.Info("scheduler: background task #2 stopped")
 				return
 			}
 
-			for removing := true; removing;{
+			for removing := true; removing; {
 				select {
-				case task := <- s.completed:
+				case task := <-s.completed:
 					s.lock.Lock()
 					delete(s.tasks, task.Id)
 					s.lock.Unlock()
@@ -265,13 +265,13 @@ func (s *Scheduler) start(ctx context.Context){
 // New creates a scheduler instance.
 func New(queue eque.Queue) *Scheduler {
 	s := Scheduler{
-		queue: queue,
-		interval: DefaultInterval,
+		queue:          queue,
+		interval:       DefaultInterval,
 		enqueueTimeout: DefaultEnqueueTimeout,
 		dequeueTimeout: DefaultDequeueTimeout,
-		tasks: make(map[string]*Task),
-		completed: make(chan *Task),
-		stopped: true,
+		tasks:          make(map[string]*Task),
+		completed:      make(chan *Task),
+		stopped:        true,
 	}
 
 	s.signals.stop = make(chan struct{}, 1)
@@ -283,23 +283,23 @@ func New(queue eque.Queue) *Scheduler {
 
 // Task is an instance of a thing to be scheduled.
 type Task struct {
-	Id         string `json:"id"`
-	Schedule   TaskSchedule `json:"schedule"`
-	lock chan struct{}
+	Id       string       `json:"id"`
+	Schedule TaskSchedule `json:"schedule"`
+	lock     chan struct{}
 }
 
 // Lock notifies the scheduler to ignore scheduling.
-func (t *Task) Lock() bool{
+func (t *Task) Lock() bool {
 	select {
 	case <-t.lock:
-			return true
+		return true
 	default:
 		return false
 	}
 }
 
 // Unlock notifies the scheduler that the task has been scheduled.
-func (t *Task) Unlock(){
+func (t *Task) Unlock() {
 	select {
 	case t.lock <- struct{}{}:
 	default:
@@ -307,32 +307,32 @@ func (t *Task) Unlock(){
 }
 
 // Occurrences gets the number of times the task has been scheduled.
-func (t *Task) Occurrences() int{
+func (t *Task) Occurrences() int {
 	t.Schedule.RLock()
 	defer t.Schedule.RUnlock()
-	
+
 	return t.Schedule.Count
 }
 
 // CanSchedule determines if the task can be scheduled at given time.
-func (t *Task) CanSchedule(now time.Time) bool{
+func (t *Task) CanSchedule(now time.Time) bool {
 	t.Schedule.RLock()
 	defer t.Schedule.RUnlock()
 
-	if t.Schedule.Recurrence == ""{
+	if t.Schedule.Recurrence == "" {
 		return t.Schedule.Count == 0
 	}
 
-	if rule, err := rrule.StrToRRule(t.Schedule.Recurrence); err == nil{
-		if rule.Options.Count != 0 && t.Schedule.Count >= rule.Options.Count{
+	if rule, err := rrule.StrToRRule(t.Schedule.Recurrence); err == nil {
+		if rule.Options.Count != 0 && t.Schedule.Count >= rule.Options.Count {
 			return false
 		}
 
-		if now.After(rule.GetUntil()){
+		if now.After(rule.GetUntil()) {
 			return false
 		}
 
-		if rule.Before(now, true) == rule.Before(t.Schedule.UpdatedAt, true){
+		if rule.Before(now, true) == rule.Before(t.Schedule.UpdatedAt, true) {
 			return false
 		}
 
@@ -343,7 +343,7 @@ func (t *Task) CanSchedule(now time.Time) bool{
 }
 
 // MarkScheduled marks the task as scheduled.
-func (t *Task) MarkScheduled(at time.Time) *Task{
+func (t *Task) MarkScheduled(at time.Time) *Task {
 	t.Schedule.Lock()
 	defer t.Schedule.Unlock()
 
@@ -353,21 +353,21 @@ func (t *Task) MarkScheduled(at time.Time) *Task{
 }
 
 // IsComplete checks if the tasks can no longer be scheduled.
-func (t *Task) IsComplete() bool{
+func (t *Task) IsComplete() bool {
 	t.Schedule.RLock()
 	defer t.Schedule.RUnlock()
 
-	if t.Schedule.Recurrence == ""{
+	if t.Schedule.Recurrence == "" {
 		return t.Schedule.Count != 0
 	}
 
 	now := time.Now()
-	if rule, err := rrule.StrToRRule(t.Schedule.Recurrence); err == nil{
-		if rule.Options.Count != 0 && t.Schedule.Count >= rule.Options.Count{
+	if rule, err := rrule.StrToRRule(t.Schedule.Recurrence); err == nil {
+		if rule.Options.Count != 0 && t.Schedule.Count >= rule.Options.Count {
 			return true
 		}
 
-		if now.After(rule.GetUntil()){
+		if now.After(rule.GetUntil()) {
 			return true
 		}
 
@@ -378,11 +378,11 @@ func (t *Task) IsComplete() bool{
 }
 
 // SetRecurrence sets a new recurrence rule based on rfc 5545
-func (t *Task) SetRecurrence(rfc string) error{
+func (t *Task) SetRecurrence(rfc string) error {
 	t.Schedule.Lock()
 	defer t.Schedule.Unlock()
 
-	if _, err := rrule.StrToRRule(rfc); err != nil{
+	if _, err := rrule.StrToRRule(rfc); err != nil {
 		return errors.BadRequest(err)
 	}
 
@@ -392,9 +392,9 @@ func (t *Task) SetRecurrence(rfc string) error{
 }
 
 // NewTask creates a new instance of a task to be scheduled.
-func NewTask(id string) *Task{
+func NewTask(id string) *Task {
 	t := Task{
-		Id: id,
+		Id:   id,
 		lock: make(chan struct{}, 1),
 	}
 
@@ -404,8 +404,8 @@ func NewTask(id string) *Task{
 
 // TaskSchedule is the schedule for when the task is to occur.
 type TaskSchedule struct {
-	Recurrence string `json:"recurrence"`
-	Count 		int `json:"count"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Recurrence string    `json:"recurrence"`
+	Count      int       `json:"count"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 	sync.RWMutex
 }

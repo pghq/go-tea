@@ -45,8 +45,8 @@ func encodeKey(key interface{}) (string, error) {
 }
 
 // Cache is an instance of a lru based Cache.
-type Cache struct{
-	lru *hashicorp.Cache
+type Cache struct {
+	lru   *hashicorp.Cache
 	clock internal.Clock
 }
 
@@ -58,7 +58,7 @@ func (c *Cache) Insert(k interface{}, v interface{}, ttl time.Duration) error {
 	}
 
 	c.lru.Add(key, &Item{
-		value:     v,
+		value:    v,
 		cachedAt: c.clock.Now(),
 		ttl:      ttl,
 	})
@@ -105,12 +105,12 @@ func (c *Cache) Get(k interface{}) (*Item, error) {
 }
 
 // Len gets the number of items in the cache
-func (c *Cache) Len() int{
+func (c *Cache) Len() int {
 	return c.lru.Len()
 }
 
 // SetCapacity sets the maximum number of items in the cache
-func (c *Cache) SetCapacity(capacity uint){
+func (c *Cache) SetCapacity(capacity uint) {
 	c.lru.Resize(int(capacity))
 }
 
@@ -129,17 +129,17 @@ func New() *Cache {
 
 // Item is an instance of a value in the lru Cache.
 type Item struct {
-	value     interface{}
+	value    interface{}
 	cachedAt time.Time
 	ttl      time.Duration
 }
 
 // CachedAt gets the time the item was added to the cace
-func (i *Item) CachedAt() time.Time{
+func (i *Item) CachedAt() time.Time {
 	return i.cachedAt
 }
 
 // Value gets the raw object
-func (i *Item) Value() interface{}{
+func (i *Item) Value() interface{} {
 	return i.value
 }

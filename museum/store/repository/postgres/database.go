@@ -21,13 +21,13 @@ const (
 
 // Database is a client for interacting with Postgres.
 type Database struct {
-	pool       Pool
-	secondary  Pool
-	primaryDSN string
-	secondaryDSN string
-	maxConns int
+	pool            Pool
+	secondary       Pool
+	primaryDSN      string
+	secondaryDSN    string
+	maxConns        int
 	maxConnLifetime time.Duration
-	connect func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error)
+	connect         func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error)
 }
 
 // MaxConns sets the max number of open connections.
@@ -44,7 +44,7 @@ func (db *Database) MaxConnLifetime(timeout time.Duration) *Database {
 	return db
 }
 
-func (db *Database) Connect() error{
+func (db *Database) Connect() error {
 	primary, err := db.newPool(db.primaryDSN)
 	if err != nil {
 		return errors.Wrap(err)
@@ -61,7 +61,7 @@ func (db *Database) Connect() error{
 	return nil
 }
 
-func (db *Database) IsConnected() bool{
+func (db *Database) IsConnected() bool {
 	return db.pool != nil && db.secondary != nil
 }
 
@@ -77,7 +77,7 @@ func (db *Database) newPool(databaseURL string) (Pool, error) {
 	config.MaxConns = int32(db.maxConns)
 
 	pool, err := db.connect(context.Background(), config)
-	if err != nil{
+	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 
@@ -85,7 +85,7 @@ func (db *Database) newPool(databaseURL string) (Pool, error) {
 }
 
 func (db *Database) Secondary(dsn string) *Database {
-	if dsn != ""{
+	if dsn != "" {
 		db.secondaryDSN = dsn
 	}
 
@@ -95,9 +95,9 @@ func (db *Database) Secondary(dsn string) *Database {
 // New creates a new Postgres database client.
 func New(primary string) *Database {
 	db := Database{
-		primaryDSN: primary,
+		primaryDSN:   primary,
 		secondaryDSN: primary,
-		connect: pgxpool.ConnectConfig,
+		connect:      pgxpool.ConnectConfig,
 	}
 	db.maxConns = DefaultSQLMaxOpenConns
 
@@ -112,29 +112,29 @@ type Pool interface {
 }
 
 // Cursor represents an instance of a Cursor
-type Cursor struct{
+type Cursor struct {
 	dest []interface{}
 	rows pgx.Rows
 }
 
-func (c *Cursor) Next() bool{
+func (c *Cursor) Next() bool {
 	return c.rows.Next()
 }
 
 func (c *Cursor) Decode(values ...interface{}) error {
-	if err := c.rows.Scan(values...); err != nil{
+	if err := c.rows.Scan(values...); err != nil {
 		return errors.Wrap(err)
 	}
 
 	return nil
 }
 
-func (c *Cursor) Close(){
+func (c *Cursor) Close() {
 	c.rows.Close()
 }
 
-func (c *Cursor) Error() error{
-	if err := c.rows.Err(); err != nil{
+func (c *Cursor) Error() error {
+	if err := c.rows.Err(); err != nil {
 		return errors.Wrap(err)
 	}
 
@@ -149,10 +149,10 @@ func NewCursor(rows pgx.Rows) database.Cursor {
 }
 
 // Logger is an instance of the pgx Logger
-type Logger struct {}
+type Logger struct{}
 
-func (l *Logger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map[string]interface{}){
-	switch level{
+func (l *Logger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map[string]interface{}) {
+	switch level {
 	case pgx.LogLevelDebug:
 		log.Debug(msg)
 	case pgx.LogLevelInfo:

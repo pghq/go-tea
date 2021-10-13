@@ -11,72 +11,72 @@ import (
 )
 
 type RequestBuilder struct {
-	t *testing.T
-	path string
+	t      *testing.T
+	path   string
 	method string
-	body string
-	router struct{
+	body   string
+	router struct {
 		method string
-		path string
+		path   string
 	}
-	response struct{
+	response struct {
 		code int
 		body string
 	}
 }
 
-func (b *RequestBuilder) Method(method string) *RequestBuilder{
+func (b *RequestBuilder) Method(method string) *RequestBuilder {
 	b.method = method
-	if b.router.method == ""{
+	if b.router.method == "" {
 		b.router.method = method
 	}
 
 	return b
 }
 
-func (b *RequestBuilder) Path(path string) *RequestBuilder{
+func (b *RequestBuilder) Path(path string) *RequestBuilder {
 	b.path = path
 
 	return b
 }
 
-func (b *RequestBuilder) Body(body string) *RequestBuilder{
+func (b *RequestBuilder) Body(body string) *RequestBuilder {
 	b.body = body
 	return b
 }
 
-func (b *RequestBuilder) ExpectStatus(code int) *RequestBuilder{
+func (b *RequestBuilder) ExpectStatus(code int) *RequestBuilder {
 	b.response.code = code
 	return b
 }
 
-func (b *RequestBuilder) ExpectRoute(path string) *RequestBuilder{
+func (b *RequestBuilder) ExpectRoute(path string) *RequestBuilder {
 	b.router.path = path
 	return b
 }
 
-func (b *RequestBuilder) ExpectedRoute() string{
+func (b *RequestBuilder) ExpectedRoute() string {
 	return b.router.path
 }
 
-func (b *RequestBuilder) ExpectMethod(method string) *RequestBuilder{
+func (b *RequestBuilder) ExpectMethod(method string) *RequestBuilder {
 	b.router.method = method
 	return b
 }
 
-func (b *RequestBuilder) ExpectedMethod() string{
+func (b *RequestBuilder) ExpectedMethod() string {
 	return b.router.method
 }
 
-func (b *RequestBuilder) ExpectResponse(body string) *RequestBuilder{
+func (b *RequestBuilder) ExpectResponse(body string) *RequestBuilder {
 	b.response.body = body
 	return b
 }
 
-func (b *RequestBuilder) Request(base string) *http.Request{
+func (b *RequestBuilder) Request(base string) *http.Request {
 	b.t.Helper()
 	var body io.Reader
-	if b.body != ""{
+	if b.body != "" {
 		body = io.NopCloser(strings.NewReader(b.body))
 	}
 
@@ -87,19 +87,19 @@ func (b *RequestBuilder) Request(base string) *http.Request{
 	return req
 }
 
-func (b *RequestBuilder) Response() *http.Response{
+func (b *RequestBuilder) Response() *http.Response {
 	w := http.Response{
 		StatusCode: b.response.code,
 	}
 
-	if len(b.response.body) > 0{
+	if len(b.response.body) > 0 {
 		w.Body = io.NopCloser(strings.NewReader(b.response.body))
 	}
 
 	return &w
 }
 
-func NewRequest(t *testing.T) *RequestBuilder{
+func NewRequest(t *testing.T) *RequestBuilder {
 	b := RequestBuilder{t: t}
 	b.response.code = http.StatusOK
 	return &b

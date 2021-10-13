@@ -20,7 +20,7 @@ func TestSend(t *testing.T) {
 	t.Run("EncodeError", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
-		Send(res, req, New(func(){}))
+		Send(res, req, New(func() {}))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
 	})
 

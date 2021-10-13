@@ -197,7 +197,7 @@ func TestScheduler_Worker(t *testing.T) {
 		go s.Start()
 		defer s.Stop()
 		done := make(chan struct{}, 1)
-		job := func(got *Task) { done <- struct{}{}}
+		job := func(got *Task) { done <- struct{}{} }
 		w := s.Worker(job).Every(time.Nanosecond)
 		go w.Start()
 		defer w.Stop()

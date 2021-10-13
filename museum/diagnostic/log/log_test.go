@@ -13,7 +13,7 @@ import (
 )
 
 func TestDebug(t *testing.T) {
-	t.Run("Level", func(t *testing.T){
+	t.Run("Level", func(t *testing.T) {
 		Level("debug")
 		var buf bytes.Buffer
 		Writer(&buf)
@@ -27,7 +27,7 @@ func TestDebug(t *testing.T) {
 }
 
 func TestInfo(t *testing.T) {
-	t.Run("Level", func(t *testing.T){
+	t.Run("Level", func(t *testing.T) {
 		Level("info")
 		var buf bytes.Buffer
 		Writer(&buf)
@@ -40,7 +40,7 @@ func TestInfo(t *testing.T) {
 }
 
 func TestWarn(t *testing.T) {
-	t.Run("Level", func(t *testing.T){
+	t.Run("Level", func(t *testing.T) {
 		Level("warn")
 		var buf bytes.Buffer
 		Writer(&buf)
@@ -53,7 +53,7 @@ func TestWarn(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	t.Run("Level", func(t *testing.T){
+	t.Run("Level", func(t *testing.T) {
 		Level("error")
 		var buf bytes.Buffer
 		Writer(&buf)
@@ -68,7 +68,7 @@ func TestError(t *testing.T) {
 func TestHTTPError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/tests", nil)
 
-	t.Run("Transfer", func(t *testing.T){
+	t.Run("Transfer", func(t *testing.T) {
 		Level("error")
 		var buf bytes.Buffer
 		Writer(&buf)

@@ -46,7 +46,7 @@ func TestWorker_Start(t *testing.T) {
 			done <- struct{}{}
 		}
 		w := New(job).Every(time.Nanosecond)
-		go w.Start(func(){
+		go w.Start(func() {
 			assert.False(t, w.IsStopped())
 		})
 		<-done
@@ -54,7 +54,7 @@ func TestWorker_Start(t *testing.T) {
 
 	t.Run("Panic", func(t *testing.T) {
 		defer func() {
-			if err := recover(); err != nil{
+			if err := recover(); err != nil {
 				t.Fatalf("panic not expected: %+v", err)
 			}
 		}()
@@ -66,7 +66,7 @@ func TestWorker_Start(t *testing.T) {
 		w := New(job).Every(time.Nanosecond)
 		defer w.Stop()
 		go w.Start()
-		
+
 		<-time.After(time.Millisecond)
 	})
 }

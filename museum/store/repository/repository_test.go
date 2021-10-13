@@ -6,8 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/internal/test"
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/pghq/go-museum/museum/internal/test"
 )
 
 func TestNew(t *testing.T) {

@@ -49,7 +49,7 @@ func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	}
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
-	if err != nil{
+	if err != nil {
 		return errors.HTTP(err, http.StatusBadRequest)
 	}
 
@@ -58,9 +58,9 @@ func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 	ct := r.Header.Get("Content-Type")
 
-	switch{
+	switch {
 	case strings.Contains(ct, "application/json"):
-		if err := json.NewDecoder(body).Decode(v); err != nil{
+		if err := json.NewDecoder(body).Decode(v); err != nil {
 			return errors.HTTP(err, http.StatusBadRequest)
 		}
 	default:
@@ -84,9 +84,9 @@ func Authorization(r *http.Request) (string, string) {
 
 // First gets the first query for pagination
 func First(r *http.Request) (uint, error) {
-	if f := r.URL.Query().Get("first"); f != ""{
+	if f := r.URL.Query().Get("first"); f != "" {
 		first, err := strconv.ParseUint(f, 10, 64)
-		if err != nil{
+		if err != nil {
 			return 0, errors.BadRequest(err)
 		}
 
@@ -101,10 +101,10 @@ func First(r *http.Request) (uint, error) {
 }
 
 // After gets the after query for pagination
-func After(r *http.Request) (string, error){
-	if a := r.URL.Query().Get("after"); a != ""{
+func After(r *http.Request) (string, error) {
+	if a := r.URL.Query().Get("after"); a != "" {
 		after, err := base64.StdEncoding.DecodeString(a)
-		if err != nil{
+		if err != nil {
 			return "", errors.BadRequest(err)
 		}
 

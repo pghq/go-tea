@@ -25,8 +25,8 @@ import (
 
 // applicationError is an error type containing an error code string.
 type applicationError struct {
-	code 		int
-	cause     error
+	code  int
+	cause error
 }
 
 // Error implements the error interface
@@ -35,7 +35,7 @@ func (e *applicationError) Error() string {
 	return e.cause.Error()
 }
 
-func (e *applicationError) Format(s fmt.State, verb rune){
+func (e *applicationError) Format(s fmt.State, verb rune) {
 	if fe, ok := e.cause.(fmt.Formatter); ok {
 		fe.Format(s, verb)
 	}
@@ -43,7 +43,7 @@ func (e *applicationError) Format(s fmt.State, verb rune){
 
 // Wrap creates an internal error
 func Wrap(err error) error {
-	if ae, ok := err.(*applicationError); ok{
+	if ae, ok := err.(*applicationError); ok {
 		return runtimeError(err, ae.code)
 	}
 
@@ -86,7 +86,7 @@ func NewNoContent(msg string) error {
 }
 
 // As finds first error in chain matching target.
-func As(err error, target interface{}) bool{
+func As(err error, target interface{}) bool {
 	// why would we ever want to panic on this call???
 	defer func() {
 		recover()
@@ -151,8 +151,8 @@ func Recover(err interface{}) {
 // runtimeError creates an error with a given code and stack trace.
 func runtimeError(err error, code int) error {
 	ae := &applicationError{
-		cause:     errors.WithStack(err),
-		code: code,
+		cause: errors.WithStack(err),
+		code:  code,
 	}
 
 	return ae

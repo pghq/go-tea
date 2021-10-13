@@ -37,7 +37,7 @@ const (
 
 // App provides access to various services within the SDK.
 type App struct {
-	version *version.Version
+	version     *version.Version
 	environment string
 }
 
@@ -49,21 +49,21 @@ func New(opts ...internal.AppOption) (*App, error) {
 	}
 
 	v, err := version.NewVersion(conf.Version)
-	if err != nil{
+	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 
 	app := &App{
-		version: v,
+		version:     v,
 		environment: conf.Environment,
 	}
 
 	err = errors.Init(errors.MonitorConfig{
-		Version: app.version.String(),
+		Version:     app.version.String(),
 		Environment: app.environment,
 	})
 
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -87,7 +87,7 @@ func (a *App) Router(origins ...string) *router.Router {
 // defaultConfig provides the default configuration for the application
 func defaultConfig() *internal.AppConfig {
 	config := &internal.AppConfig{
-		Version:   DefaultVersion,
+		Version:     DefaultVersion,
 		Environment: DefaultEnvironment,
 	}
 
@@ -104,7 +104,7 @@ func (o versionOption) Apply(conf *internal.AppConfig) {
 }
 
 // Version creates a new version option for the app.
-func Version(v string) internal.AppOption{
+func Version(v string) internal.AppOption {
 	return versionOption(v)
 }
 
@@ -118,6 +118,6 @@ func (o environmentOption) Apply(conf *internal.AppConfig) {
 }
 
 // Environment creates a new environment option for the app.
-func Environment(environment string) internal.AppOption{
+func Environment(environment string) internal.AppOption {
 	return environmentOption(environment)
 }

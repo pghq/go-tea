@@ -19,7 +19,7 @@ func TestMiddleware_Handle(t *testing.T) {
 	t.Run("NoPanic", func(t *testing.T) {
 		defer func() {
 			err := recover()
-			if err != nil{
+			if err != nil {
 				t.Fatalf("panic not expected: %+v", err)
 			}
 		}()
