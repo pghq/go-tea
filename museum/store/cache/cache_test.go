@@ -6,14 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/internal/clock"
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/pghq/go-museum/museum/internal/clock"
 )
 
-func TestInsert(t *testing.T){
+func TestInsert(t *testing.T) {
 	t.Run("EncodeKeyError", func(t *testing.T) {
 		c := New()
-		err := c.Insert(func(){}, "test", time.Minute)
+		err := c.Insert(func() {}, "test", time.Minute)
 		assert.NotNil(t, err)
 	})
 
@@ -26,11 +26,11 @@ func TestInsert(t *testing.T){
 	})
 }
 
-func TestRemove(t *testing.T){
+func TestRemove(t *testing.T) {
 	t.Run("EncodeKeyError", func(t *testing.T) {
 		c := New()
-		_ = c.Insert(func(){}, "test", time.Minute)
-		err := c.Remove(func(){})
+		_ = c.Insert(func() {}, "test", time.Minute)
+		err := c.Remove(func() {})
 		assert.NotNil(t, err)
 	})
 
@@ -44,11 +44,11 @@ func TestRemove(t *testing.T){
 	})
 }
 
-func TestGet(t *testing.T){
+func TestGet(t *testing.T) {
 	t.Run("EncodeKeyError", func(t *testing.T) {
 		c := New()
-		_ = c.Insert(func(){}, "test", time.Minute)
-		_, err := c.Get(func(){})
+		_ = c.Insert(func() {}, "test", time.Minute)
+		_, err := c.Get(func() {})
 		assert.NotNil(t, err)
 	})
 
@@ -86,7 +86,7 @@ func TestGet(t *testing.T){
 	})
 }
 
-func TestLen(t *testing.T){
+func TestLen(t *testing.T) {
 	t.Run("NoError", func(t *testing.T) {
 		c := New()
 		c.SetCapacity(1)
@@ -96,7 +96,7 @@ func TestLen(t *testing.T){
 	})
 }
 
-func TestItemCachedAt(t *testing.T){
+func TestItemCachedAt(t *testing.T) {
 	t.Run("NoError", func(t *testing.T) {
 		c := New()
 		now := time.Now()
@@ -110,7 +110,7 @@ func TestItemCachedAt(t *testing.T){
 	})
 }
 
-func TestItemValue(t *testing.T){
+func TestItemValue(t *testing.T) {
 	t.Run("NoError", func(t *testing.T) {
 		c := New()
 		_ = c.Insert("item", "test", time.Minute)

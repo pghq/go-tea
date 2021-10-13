@@ -13,9 +13,9 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/internal/test"
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
+	"github.com/pghq/go-museum/museum/internal/test"
 )
 
 func TestNew(t *testing.T) {
@@ -62,7 +62,7 @@ func TestDatabase_Connect(t *testing.T) {
 	t.Run("BadSecondary", func(t *testing.T) {
 		db := New("postgres://postgres:postgres@db:5432")
 		db.connect = func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error) {
-			if config.ConnString() == "secondary"{
+			if config.ConnString() == "secondary" {
 				return nil, errors.New("bad secondary")
 			}
 			return &pgxpool.Pool{}, nil
@@ -285,7 +285,7 @@ func TestDatabase_Transaction(t *testing.T) {
 		_, err := db.Transaction(ctx)
 		assert.NotNil(t, err)
 	})
-	
+
 	t.Run("NoError", func(t *testing.T) {
 		primary.ExpectBegin(ctx)
 		defer primary.Assert()
@@ -463,7 +463,7 @@ func TestIsIntegrityConstraintViolation(t *testing.T) {
 
 func TestLogger_Log(t *testing.T) {
 	l := NewLogger()
-	t.Run("Debug", func(t *testing.T){
+	t.Run("Debug", func(t *testing.T) {
 		log.Level("debug")
 		var buf bytes.Buffer
 		log.Writer(&buf)
@@ -471,7 +471,7 @@ func TestLogger_Log(t *testing.T) {
 		assert.True(t, strings.Contains(buf.String(), "debug"))
 	})
 
-	t.Run("Info", func(t *testing.T){
+	t.Run("Info", func(t *testing.T) {
 		log.Level("info")
 		var buf bytes.Buffer
 		log.Writer(&buf)
@@ -479,7 +479,7 @@ func TestLogger_Log(t *testing.T) {
 		assert.True(t, strings.Contains(buf.String(), "info"))
 	})
 
-	t.Run("Warn", func(t *testing.T){
+	t.Run("Warn", func(t *testing.T) {
 		log.Level("warn")
 		var buf bytes.Buffer
 		log.Writer(&buf)
@@ -487,7 +487,7 @@ func TestLogger_Log(t *testing.T) {
 		assert.True(t, strings.Contains(buf.String(), "warn"))
 	})
 
-	t.Run("Error", func(t *testing.T){
+	t.Run("Error", func(t *testing.T) {
 		log.Level("error")
 		var buf bytes.Buffer
 		log.Writer(&buf)
@@ -496,7 +496,7 @@ func TestLogger_Log(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T) (*Database, *test.PostgresPool, *test.PostgresPool){
+func setup(t *testing.T) (*Database, *test.PostgresPool, *test.PostgresPool) {
 	t.Helper()
 
 	db := New("postgres://postgres:postgres@db:5432")

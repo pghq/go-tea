@@ -14,22 +14,22 @@
 package repository
 
 import (
-	"github.com/pghq/go-museum/museum/internal/database"
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/pghq/go-museum/museum/internal/database"
 )
 
 // Repository is an instance of a postgres Database
-type Repository struct{
-	client   database.Client
+type Repository struct {
+	client database.Client
 }
 
 // New creates a new postgres database
 func New(client database.Client) (*Repository, error) {
-	if client == nil{
+	if client == nil {
 		return nil, errors.New("no database client provided")
 	}
 
-	if !client.IsConnected(){
+	if !client.IsConnected() {
 		return nil, errors.New("database not connected")
 	}
 
@@ -39,4 +39,3 @@ func New(client database.Client) (*Repository, error) {
 
 	return &r, nil
 }
-

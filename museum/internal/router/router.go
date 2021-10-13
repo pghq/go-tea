@@ -64,14 +64,14 @@ func (r *Router) At(path string) *Router {
 
 // Middleware adds a handler to execute before/after the principle request handler
 func (r *Router) Middleware(middlewares ...middleware.Middleware) *Router {
-	for _, m := range middlewares{
+	for _, m := range middlewares {
 		r.mux.Use(mux.MiddlewareFunc(m))
 	}
 
 	return r
 }
 
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request){
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.mux.ServeHTTP(w, req)
 }
 

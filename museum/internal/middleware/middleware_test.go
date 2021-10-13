@@ -11,7 +11,7 @@ import (
 
 func TestMiddleware_Handle(t *testing.T) {
 	t.Run("NotNil", func(t *testing.T) {
-		m := Middleware(func(h http.Handler) http.Handler{
+		m := Middleware(func(h http.Handler) http.Handler {
 			return test.NoopHandler
 		})
 

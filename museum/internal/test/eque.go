@@ -10,19 +10,19 @@ import (
 )
 
 type EqueQueue struct {
-	t *testing.T
-	err error
-	lock sync.Mutex
-	dequeue struct{
+	t       *testing.T
+	err     error
+	lock    sync.Mutex
+	dequeue struct {
 		calls int
-		ctx context.Context
-		msg eque.Message
-		err error
+		ctx   context.Context
+		msg   eque.Message
+		err   error
 	}
-	enqueue struct{
+	enqueue struct {
 		calls int
-		ctx context.Context
-		id string
+		ctx   context.Context
+		id    string
 		value interface{}
 	}
 	values chan interface{}
@@ -32,17 +32,17 @@ func (e *EqueQueue) Dequeue(ctx context.Context) (eque.Message, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.t.Helper()
-	if e.err != nil{
+	if e.err != nil {
 		return nil, e.err
 	}
 
-	if e.dequeue.err != nil{
+	if e.dequeue.err != nil {
 		return nil, e.dequeue.err
 	}
 
 	e.dequeue.calls -= 1
 
-	if e.dequeue.ctx != nil{
+	if e.dequeue.ctx != nil {
 		assert.Equal(e.t, e.dequeue.ctx, ctx)
 	}
 
@@ -54,7 +54,7 @@ func (e *EqueQueue) Dequeue(ctx context.Context) (eque.Message, error) {
 	}
 }
 
-func (e *EqueQueue) ExpectDequeue(ctx context.Context) *EqueQueue{
+func (e *EqueQueue) ExpectDequeue(ctx context.Context) *EqueQueue {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.err = nil
@@ -63,7 +63,7 @@ func (e *EqueQueue) ExpectDequeue(ctx context.Context) *EqueQueue{
 	return e
 }
 
-func (e *EqueQueue) ReturnDequeue(msg eque.Message, err error) *EqueQueue{
+func (e *EqueQueue) ReturnDequeue(msg eque.Message, err error) *EqueQueue {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.dequeue.err = err
@@ -75,21 +75,21 @@ func (e *EqueQueue) Enqueue(ctx context.Context, id string, value interface{}) e
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.t.Helper()
-	if e.err != nil{
+	if e.err != nil {
 		return e.err
 	}
 
 	e.enqueue.calls -= 1
 
-	if e.enqueue.ctx != nil{
+	if e.enqueue.ctx != nil {
 		assert.Equal(e.t, e.enqueue.ctx, ctx)
 	}
 
-	if e.enqueue.id != ""{
+	if e.enqueue.id != "" {
 		assert.Equal(e.t, e.enqueue.id, id)
 	}
 
-	if e.enqueue.value != nil{
+	if e.enqueue.value != nil {
 		assert.Equal(e.t, e.enqueue.value, value)
 	}
 
@@ -101,7 +101,7 @@ func (e *EqueQueue) Enqueue(ctx context.Context, id string, value interface{}) e
 	return nil
 }
 
-func (e *EqueQueue) ExpectEnqueue(ctx context.Context, id string, value interface{}) *EqueQueue{
+func (e *EqueQueue) ExpectEnqueue(ctx context.Context, id string, value interface{}) *EqueQueue {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.err = nil
@@ -111,87 +111,87 @@ func (e *EqueQueue) ExpectEnqueue(ctx context.Context, id string, value interfac
 	return e
 }
 
-func (e *EqueQueue) Error(err error) *EqueQueue{
+func (e *EqueQueue) Error(err error) *EqueQueue {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.err = err
 	return e
 }
 
-func (e *EqueQueue) Assert(){
+func (e *EqueQueue) Assert() {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.t.Helper()
-	if e.dequeue.calls > 0{
+	if e.dequeue.calls > 0 {
 		e.t.Fatal("not enough calls to dequeue")
 	}
 
-	if e.enqueue.calls > 0{
+	if e.enqueue.calls > 0 {
 		e.t.Fatal("not enough calls to enqueue")
 	}
 }
 
-func NewEqueQueue(t *testing.T) *EqueQueue{
+func NewEqueQueue(t *testing.T) *EqueQueue {
 	q := EqueQueue{
-		t: t,
+		t:      t,
 		values: make(chan interface{}, 1),
 	}
 
 	return &q
 }
 
-type EqueMessage struct{
-	t *testing.T
+type EqueMessage struct {
+	t   *testing.T
 	err error
-	id struct{
+	id  struct {
 		calls int
 	}
-	ack struct{
+	ack struct {
 		calls int
-		ctx context.Context
+		ctx   context.Context
 	}
-	reject struct{
+	reject struct {
 		calls int
-		ctx context.Context
+		ctx   context.Context
 	}
-	decode struct{
+	decode struct {
 		calls int
-		v interface{}
+		v     interface{}
 	}
 	lock sync.Mutex
 }
 
-func (m *EqueMessage) Id() string{
+func (m *EqueMessage) Id() string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.id.calls -= 1
 	return ""
 }
 
-func (m *EqueMessage) ExpectId() *EqueMessage{
+func (m *EqueMessage) ExpectId() *EqueMessage {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.id.calls += 1
 	return m
 }
 
-func (m *EqueMessage) Ack(ctx context.Context) error{
+func (m *EqueMessage) Ack(ctx context.Context) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.t.Helper()
-	if m.err != nil{
+	if m.err != nil {
 		return m.err
 	}
 
 	m.ack.calls -= 1
-	if m.ack.ctx != nil{
+	if m.ack.ctx != nil {
 		assert.Equal(m.t, m.ack.ctx, ctx)
 	}
 
 	return nil
 }
 
-func (m *EqueMessage) ExpectAck(ctx context.Context) *EqueMessage{
+func (m *EqueMessage) ExpectAck(ctx context.Context) *EqueMessage {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.ack.calls += 1
@@ -199,23 +199,23 @@ func (m *EqueMessage) ExpectAck(ctx context.Context) *EqueMessage{
 	return m
 }
 
-func (m *EqueMessage) Reject(ctx context.Context) error{
+func (m *EqueMessage) Reject(ctx context.Context) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.t.Helper()
-	if m.err != nil{
+	if m.err != nil {
 		return m.err
 	}
 
 	m.reject.calls += 1
-	if m.reject.ctx != nil{
+	if m.reject.ctx != nil {
 		assert.Equal(m.t, m.reject.ctx, ctx)
 	}
 
 	return nil
 }
 
-func (m *EqueMessage) ExpectReject(ctx context.Context) *EqueMessage{
+func (m *EqueMessage) ExpectReject(ctx context.Context) *EqueMessage {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.reject.calls += 1
@@ -223,23 +223,23 @@ func (m *EqueMessage) ExpectReject(ctx context.Context) *EqueMessage{
 	return m
 }
 
-func (m *EqueMessage) Decode(v interface{}) error{
+func (m *EqueMessage) Decode(v interface{}) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.t.Helper()
-	if m.err != nil{
+	if m.err != nil {
 		return m.err
 	}
 
 	m.decode.calls -= 1
-	if m.decode.v != nil{
+	if m.decode.v != nil {
 		assert.IsType(m.t, m.decode.v, v)
 	}
 
 	return nil
 }
 
-func (m *EqueMessage) ExpectDecode(v interface{}) *EqueMessage{
+func (m *EqueMessage) ExpectDecode(v interface{}) *EqueMessage {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.decode.calls += 1
@@ -247,36 +247,36 @@ func (m *EqueMessage) ExpectDecode(v interface{}) *EqueMessage{
 	return m
 }
 
-func (m *EqueMessage) Error(err error) *EqueMessage{
+func (m *EqueMessage) Error(err error) *EqueMessage {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.err = err
 	return m
 }
 
-func (m *EqueMessage) Assert(){
+func (m *EqueMessage) Assert() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	m.t.Helper()
-	if m.id.calls != 0{
+	if m.id.calls != 0 {
 		m.t.Fatal("not enough calls to id")
 	}
 
-	if m.ack.calls != 0{
+	if m.ack.calls != 0 {
 		m.t.Fatal("not enough calls to ack")
 	}
 
-	if m.reject.calls != 0{
+	if m.reject.calls != 0 {
 		m.t.Fatal("not enough calls to reject")
 	}
 
-	if m.decode.calls != 0{
+	if m.decode.calls != 0 {
 		m.t.Fatal("not enough calls to decode")
 	}
 }
 
-func NewEqueMessage(t *testing.T) *EqueMessage{
+func NewEqueMessage(t *testing.T) *EqueMessage {
 	m := EqueMessage{
 		t: t,
 	}

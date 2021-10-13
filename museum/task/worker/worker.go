@@ -24,28 +24,28 @@ import (
 
 const (
 	// DefaultInstances is the default number of simultaneous workers
-	DefaultInstances   = 1
+	DefaultInstances = 1
 
 	// DefaultInterval is the default period between running batches of jobs
-	DefaultInterval    = 100 * time.Millisecond
+	DefaultInterval = 100 * time.Millisecond
 )
 
 // Worker is an instance of a background worker.
-type Worker struct{
-	instances  int
-	interval   time.Duration
-	signals struct{
-		stop       chan struct{}
-		stopping   chan struct{}
-		stopped chan struct{}
+type Worker struct {
+	instances int
+	interval  time.Duration
+	signals   struct {
+		stop     chan struct{}
+		stopping chan struct{}
+		stopped  chan struct{}
 	}
 	stopped bool
-	jobs []Job
-	wg sync.WaitGroup
+	jobs    []Job
+	wg      sync.WaitGroup
 }
 
 // Start begins processing tasks.
-func (w *Worker) Start(after ...func()){
+func (w *Worker) Start(after ...func()) {
 	w.stopped = false
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -56,7 +56,7 @@ func (w *Worker) Start(after ...func()){
 	}
 
 	log.Infof("worker: workers=%d, started", w.instances)
-	for _, f := range after{
+	for _, f := range after {
 		f()
 	}
 	<-w.signals.stop
@@ -81,6 +81,7 @@ func (w *Worker) Concurrent(instances uint) *Worker {
 
 	return w
 }
+
 // Every sets the time between processing tasks.
 func (w *Worker) Every(interval time.Duration) *Worker {
 	w.interval = interval
@@ -89,19 +90,19 @@ func (w *Worker) Every(interval time.Duration) *Worker {
 }
 
 // Stop stops the worker and waits for all instances to terminate.
-func (w *Worker) Stop(){
+func (w *Worker) Stop() {
 	w.signals.stop <- struct{}{}
 	<-w.signals.stopped
 	w.stopped = true
 }
 
 // IsStopped checks if the worker has completely stopped.
-func (w *Worker) IsStopped() bool{
+func (w *Worker) IsStopped() bool {
 	return w.stopped
 }
 
 // IsStopping checks if the worker is awaiting a complete stop.
-func (w *Worker) IsStopping() bool{
+func (w *Worker) IsStopping() bool {
 	return len(w.signals.stopping) > 0
 }
 
@@ -111,20 +112,20 @@ func (w *Worker) start(ctx context.Context, instance int) {
 	go func() {
 		for {
 			<-time.After(w.interval)
-			if w.IsStopping(){
+			if w.IsStopping() {
 				stopped <- struct{}{}
 				return
 			}
 
 			for i, job := range w.jobs {
 				go func(i int, job Job) {
-					defer func(){
-						if err := recover(); err != nil{
+					defer func() {
+						if err := recover(); err != nil {
 							errors.Recover(err)
 						}
 					}()
 
-					if w.IsStopping(){
+					if w.IsStopping() {
 						return
 					}
 
@@ -139,7 +140,7 @@ func (w *Worker) start(ctx context.Context, instance int) {
 	}()
 
 	log.Infof("worker: instance=%d, started", instance)
-	select{
+	select {
 	case <-stopped:
 	case <-ctx.Done():
 	}
@@ -151,7 +152,7 @@ func New(jobs ...Job) *Worker {
 	w := Worker{
 		instances: DefaultInstances,
 		interval:  DefaultInterval,
-		jobs: jobs,
+		jobs:      jobs,
 		stopped:   true,
 	}
 

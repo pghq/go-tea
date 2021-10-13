@@ -14,12 +14,12 @@ import (
 var decoder = NewDecoder()
 
 // Decoder is an instance of a http request decoder
-type Decoder struct{
+type Decoder struct {
 	schema *schema.Decoder
 }
 
 // Decode decodes an http request to a value
-func (d *Decoder) Decode(r *http.Request, v interface{}) error{
+func (d *Decoder) Decode(r *http.Request, v interface{}) error {
 	d.schema.IgnoreUnknownKeys(true)
 	d.schema.ZeroEmpty(true)
 

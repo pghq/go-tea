@@ -66,7 +66,7 @@ func TestRouter_Delete(t *testing.T) {
 		req := test.NewRequest(t).
 			Method("DELETE").
 			Path("/v0/tests/test").
-			ExpectRoute( "/tests/test").
+			ExpectRoute("/tests/test").
 			ExpectResponse("ok")
 
 		RequestTest(t, r, req)
@@ -152,12 +152,12 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 }
 
-func RequestTest(t *testing.T, r *Router, b *test.RequestBuilder){
+func RequestTest(t *testing.T, r *Router, b *test.RequestBuilder) {
 	t.Helper()
 	want := b.Response()
 
 	var expected []byte
-	if want.Body != nil{
+	if want.Body != nil {
 		bytes, err := io.ReadAll(want.Body)
 		assert.Nil(t, err)
 		expected = bytes
@@ -168,7 +168,7 @@ func RequestTest(t *testing.T, r *Router, b *test.RequestBuilder){
 	handlerFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(want.StatusCode)
 
-		if len(expected) > 0{
+		if len(expected) > 0 {
 			_, err := w.Write(expected)
 			assert.Nil(t, err)
 		}

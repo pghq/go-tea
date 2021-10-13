@@ -22,6 +22,6 @@ import "net/http"
 type Middleware func(http.Handler) http.Handler
 
 // Handle creates an http handler from the middleware
-func (m Middleware) Handle(h http.Handler) http.Handler{
+func (m Middleware) Handle(h http.Handler) http.Handler {
 	return m(h)
 }

@@ -19,7 +19,7 @@ const (
 var logger = NewLogger()
 
 // Logger is an instance of the zerolog based Logger
-type Logger struct{
+type Logger struct {
 	w zerolog.Logger
 }
 
@@ -59,12 +59,12 @@ func (l *Logger) HTTPError(r *http.Request, status int, err error) *Logger {
 }
 
 // Writer sets the io writer for the global logger
-func (l *Logger) Writer(w io.Writer){
+func (l *Logger) Writer(w io.Writer) {
 	l.w = l.w.Output(w)
 }
 
 // Level sets the log level for the global logger
-func (l *Logger) Level(level string){
+func (l *Logger) Level(level string) {
 	switch strings.ToLower(level) {
 	case "debug":
 		l.w = l.w.Level(zerolog.DebugLevel)

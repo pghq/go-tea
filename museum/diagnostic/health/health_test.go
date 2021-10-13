@@ -89,7 +89,7 @@ func TestHandler_Status(t *testing.T) {
 			}
 		}`,
 		now.Format(time.RFC3339Nano),
-		now.Sub(now) / (1000 * 1000 * 1000),
+		now.Sub(now)/(1000*1000*1000),
 	)
 
 	assert.JSONEq(t, body, res.Body.String())

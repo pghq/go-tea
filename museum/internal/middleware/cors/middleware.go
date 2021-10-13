@@ -38,7 +38,7 @@ func New(origins ...string) *Middleware {
 		cors: cors.New(cors.Options{
 			AllowedOrigins:   origins,
 			AllowCredentials: ac,
-			AllowedMethods:   []string{
+			AllowedMethods: []string{
 				http.MethodOptions,
 				http.MethodHead,
 				http.MethodGet,
@@ -46,7 +46,7 @@ func New(origins ...string) *Middleware {
 				http.MethodDelete,
 				http.MethodPut,
 			},
-			AllowedHeaders:   []string{"*"},
+			AllowedHeaders: []string{"*"},
 		}),
 	}
 
@@ -54,16 +54,16 @@ func New(origins ...string) *Middleware {
 }
 
 // credentials is a helper function to determine if credentials are allowed
-func credentials(origins []string) (bool, []string ){
+func credentials(origins []string) (bool, []string) {
 	var aos []string
 	credentials := true
-	for _, ao := range origins{
+	for _, ao := range origins {
 		origin := strings.Trim(ao, " ")
-		if strings.Contains(origin, "*"){
+		if strings.Contains(origin, "*") {
 			credentials = false
 		}
 
-		if origin != ""{
+		if origin != "" {
 			aos = append(aos, origin)
 		}
 	}

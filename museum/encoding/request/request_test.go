@@ -52,7 +52,7 @@ func TestDecode(t *testing.T) {
 		body := bytes.NewReader([]byte(`{
 			"data": "test",
 		}`))
-		value := struct {}{}
+		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
 		err := Decode(httptest.NewRecorder(), req, &value)
@@ -63,7 +63,7 @@ func TestDecode(t *testing.T) {
 		body := bytes.NewReader([]byte(`{
 			"data": "test"
 		}`))
-		value := struct {}{}
+		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/bson")
 		err := Decode(httptest.NewRecorder(), req, &value)
@@ -74,7 +74,9 @@ func TestDecode(t *testing.T) {
 		body := bytes.NewReader([]byte(`{
 			"data": "test"
 		}`))
-		var value struct {Data string `json:"data"`}
+		var value struct {
+			Data string `json:"data"`
+		}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
 		err := Decode(httptest.NewRecorder(), req, &value)

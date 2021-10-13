@@ -22,27 +22,27 @@ import (
 // clock is an instance of the internal Clock
 type clock struct {
 	start time.Time
-	now func() time.Time
+	now   func() time.Time
 }
 
 // Now gets the current time
-func (c *clock) Now() time.Time{
+func (c *clock) Now() time.Time {
 	return c.now()
 }
 
 // Start gets the clock start time
-func (c *clock) Start() time.Time{
+func (c *clock) Start() time.Time {
 	return c.start
 }
 
 // From sets the source for getting the current time
-func (c *clock) From(now func() time.Time) internal.Clock{
+func (c *clock) From(now func() time.Time) internal.Clock {
 	c.now = now
 	return c
 }
 
 // New creates a new instance of the internal Clock
-func New(start time.Time) internal.Clock{
+func New(start time.Time) internal.Clock {
 	return &clock{
 		start: start,
 		now: func() time.Time {

@@ -8,8 +8,8 @@ import (
 )
 
 // Query retrieves items from the repository matching criteria.
-func (r *Repository) Query(ctx context.Context, query database.Query) (database.Cursor, error){
-	if err := r.client.Query().Decode(query); err != nil{
+func (r *Repository) Query(ctx context.Context, query database.Query) (database.Cursor, error) {
+	if err := r.client.Query().Decode(query); err != nil {
 		return nil, errors.BadRequest(err)
 	}
 

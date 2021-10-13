@@ -8,8 +8,8 @@ import (
 )
 
 // Add adds items(s) to the repository
-func (r *Repository) Add(ctx context.Context, collection string, items ...store.Item) error{
-	if len(items) == 0{
+func (r *Repository) Add(ctx context.Context, collection string, items ...store.Item) error {
+	if len(items) == 0 {
 		return nil
 	}
 
@@ -20,7 +20,7 @@ func (r *Repository) Add(ctx context.Context, collection string, items ...store.
 	defer tx.Rollback()
 
 	for _, item := range items {
-		if err := item.Validate(); err != nil{
+		if err := item.Validate(); err != nil {
 			return errors.BadRequest(err)
 		}
 

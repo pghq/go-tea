@@ -52,16 +52,16 @@ func Send(w http.ResponseWriter, r *http.Request, body *Builder) {
 
 // response is the expected body contents for app requests.
 type response struct {
-	Data interface{} `json:"data"`
-	CachedAt *time.Time `json:"cachedAt,omitempty"`
-	Cursor string `json:"cursor,omitempty"`
+	Data     interface{} `json:"data"`
+	CachedAt *time.Time  `json:"cachedAt,omitempty"`
+	Cursor   string      `json:"cursor,omitempty"`
 }
 
 // Builder is an instance of a response builder
-type Builder struct{
-	data interface{}
+type Builder struct {
+	data     interface{}
 	cachedAt time.Time
-	cursor string
+	cursor   string
 }
 
 // Cached adds a cache time to the response
@@ -83,11 +83,11 @@ func (b *Builder) response() *response {
 		Data: b.data,
 	}
 
-	if b.cursor != ""{
+	if b.cursor != "" {
 		r.Cursor = base64.StdEncoding.EncodeToString([]byte(b.cursor))
 	}
 
-	if !b.cachedAt.IsZero(){
+	if !b.cachedAt.IsZero() {
 		r.CachedAt = &b.cachedAt
 	}
 

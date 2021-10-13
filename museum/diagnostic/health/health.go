@@ -54,8 +54,8 @@ type Handler struct {
 
 // service is a shared service for all health services
 type service struct {
-	clock internal.Clock
-	version   string
+	clock   internal.Clock
+	version string
 }
 
 // New creates a new health client instance

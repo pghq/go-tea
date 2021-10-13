@@ -26,7 +26,7 @@ func Writer(w io.Writer) {
 }
 
 // Level sets the default log level for the global Logger
-func Level(level string){
+func Level(level string) {
 	l := CurrentLogger()
 	l.Level(level)
 }
