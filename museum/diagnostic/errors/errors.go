@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/pghq/go-eque/eque"
 	"github.com/pkg/errors"
 
 	"github.com/pghq/go-museum/museum/diagnostic/log"
@@ -114,6 +115,14 @@ func StatusCode(err error) int {
 		return http.StatusRequestTimeout
 	}
 
+	if errors.Is(err, eque.ErrNoMessages){
+		return http.StatusBadRequest
+	}
+
+	if errors.Is(err, eque.ErrAcquireLockFailed){
+		return http.StatusBadRequest
+	}
+
 	return http.StatusInternalServerError
 }
 
@@ -144,8 +153,10 @@ func EmitHTTP(w http.ResponseWriter, r *http.Request, err error) {
 
 // Recover recovers panics
 func Recover(err interface{}) {
-	m := CurrentMonitor()
-	m.Recover(err)
+	if err != nil{
+		m := CurrentMonitor()
+		m.Recover(err)
+	}
 }
 
 // runtimeError creates an error with a given code and stack trace.

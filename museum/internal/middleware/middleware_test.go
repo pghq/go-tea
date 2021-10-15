@@ -6,13 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/internal/test"
+	"github.com/pghq/go-museum/museum/internal"
 )
 
 func TestMiddleware_Handle(t *testing.T) {
-	t.Run("NotNil", func(t *testing.T) {
+	t.Run("can create handler instance", func(t *testing.T) {
 		m := Middleware(func(h http.Handler) http.Handler {
-			return test.NoopHandler
+			return internal.NoopHandler
 		})
 
 		assert.NotNil(t, m)

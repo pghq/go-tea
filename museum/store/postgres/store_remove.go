@@ -6,21 +6,21 @@ import (
 	"github.com/Masterminds/squirrel"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 // Remove creates a remove command for the database.
-func (db *Database) Remove() database.Remove {
-	return NewRemove(db)
+func (s *Store) Remove() store.Remove {
+	return NewRemove(s)
 }
 
 // Remove is an instance of the repository remove command for Postgres.
 type Remove struct {
-	db   *Database
+	store   *Store
 	opts []func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder
 }
 
-func (r *Remove) From(collection string) database.Remove {
+func (r *Remove) From(collection string) store.Remove {
 	r.opts = append(r.opts, func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder {
 		return builder.From(collection)
 	})
@@ -28,15 +28,15 @@ func (r *Remove) From(collection string) database.Remove {
 	return r
 }
 
-func (r *Remove) Filter(filter string, args ...interface{}) database.Remove {
+func (r *Remove) Filter(filter store.Filter) store.Remove {
 	r.opts = append(r.opts, func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder {
-		return builder.Where(filter, args...)
+		return builder.Where(filter)
 	})
 
 	return r
 }
 
-func (r *Remove) Order(by string) database.Remove {
+func (r *Remove) Order(by string) store.Remove {
 	r.opts = append(r.opts, func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder {
 		return builder.OrderBy(by)
 	})
@@ -44,7 +44,7 @@ func (r *Remove) Order(by string) database.Remove {
 	return r
 }
 
-func (r *Remove) First(first uint) database.Remove {
+func (r *Remove) First(first int) store.Remove {
 	r.opts = append(r.opts, func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder {
 		return builder.Limit(uint64(first))
 	})
@@ -52,7 +52,7 @@ func (r *Remove) First(first uint) database.Remove {
 	return r
 }
 
-func (r *Remove) After(key string, value interface{}) database.Remove {
+func (r *Remove) After(key string, value interface{}) store.Remove {
 	r.opts = append(r.opts, func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder {
 		return builder.Where(squirrel.GtOrEq{key: value})
 	})
@@ -60,30 +60,21 @@ func (r *Remove) After(key string, value interface{}) database.Remove {
 	return r
 }
 
-func (r *Remove) Decode(to database.Remove) error {
-	nr, ok := to.(*Remove)
-	if !ok {
-		return errors.NewBadRequest("not a postgres remove command")
-	}
-
-	nr.db = r.db
-	nr.opts = append(r.opts, nr.opts...)
-
-	return nil
-}
-
-func (r *Remove) Execute(ctx context.Context) (uint, error) {
+func (r *Remove) Execute(ctx context.Context) (int, error) {
 	sql, args, err := r.Statement()
 	if err != nil {
 		return 0, errors.BadRequest(err)
 	}
 
-	tag, err := r.db.pool.Exec(ctx, sql, args...)
+	tag, err := r.store.pool.Exec(ctx, sql, args...)
 	if err != nil {
+		if IsIntegrityConstraintViolation(err) {
+			return 0, errors.BadRequest(err)
+		}
 		return 0, errors.Wrap(err)
 	}
 
-	return uint(tag.RowsAffected()), nil
+	return int(tag.RowsAffected()), nil
 }
 
 func (r *Remove) Statement() (string, []interface{}, error) {
@@ -99,7 +90,7 @@ func (r *Remove) Statement() (string, []interface{}, error) {
 }
 
 // NewRemove creates a remove command for the Postgres database.
-func NewRemove(db *Database) *Remove {
-	r := Remove{db: db}
+func NewRemove(store *Store) *Remove {
+	r := Remove{store: store}
 	return &r
 }

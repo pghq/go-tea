@@ -6,12 +6,12 @@ import (
 	"github.com/jackc/pgx/v4"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 // Transaction creates a database transaction for Postgres.
-func (db *Database) Transaction(ctx context.Context) (database.Transaction, error) {
-	tx, err := db.pool.Begin(ctx)
+func (s *Store) Transaction(ctx context.Context) (store.Transaction, error) {
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -25,7 +25,7 @@ type transaction struct {
 	tx  pgx.Tx
 }
 
-func (t *transaction) Execute(statement database.Communicator) (uint, error) {
+func (t *transaction) Execute(statement store.Encoder) (int, error) {
 	sql, args, err := statement.Statement()
 	if err != nil {
 		return 0, errors.BadRequest(err)
@@ -36,7 +36,7 @@ func (t *transaction) Execute(statement database.Communicator) (uint, error) {
 		return 0, errors.Wrap(err)
 	}
 
-	return uint(tag.RowsAffected()), nil
+	return int(tag.RowsAffected()), nil
 }
 
 func (t *transaction) Commit() error {

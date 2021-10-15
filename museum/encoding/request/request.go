@@ -83,9 +83,9 @@ func Authorization(r *http.Request) (string, string) {
 }
 
 // First gets the first query for pagination
-func First(r *http.Request) (uint, error) {
+func First(r *http.Request) (int, error) {
 	if f := r.URL.Query().Get("first"); f != "" {
-		first, err := strconv.ParseUint(f, 10, 64)
+		first, err := strconv.ParseInt(f, 10, 64)
 		if err != nil {
 			return 0, errors.BadRequest(err)
 		}
@@ -94,7 +94,7 @@ func First(r *http.Request) (uint, error) {
 			return 0, errors.NewBadRequest("too many results desired")
 		}
 
-		return uint(first), nil
+		return int(first), nil
 	}
 
 	return defaultQueryLimit, nil

@@ -13,14 +13,14 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		client := New("0.0.1", nil)
 		assert.NotNil(t, client)
 	})
 }
 
 func TestClient_Handler(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create handler instance", func(t *testing.T) {
 		client := New("0.0.1", nil)
 		assert.NotNil(t, client)
 		h := client.Handler()
@@ -29,7 +29,7 @@ func TestClient_Handler(t *testing.T) {
 }
 
 func TestNewHealthyCheck(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		now := time.Now()
 		check := NewHealthyCheck(now, "1", "ms")
 		assert.NotNil(t, check)
@@ -41,7 +41,7 @@ func TestNewHealthyCheck(t *testing.T) {
 }
 
 func TestStatusResponse_WithCheck(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can add check", func(t *testing.T) {
 		health := &StatusResponse{Checks: make(map[string][]*Check)}
 		now := time.Now()
 		check := NewHealthyCheck(now, "1", "ms")
@@ -53,7 +53,7 @@ func TestStatusResponse_WithCheck(t *testing.T) {
 }
 
 func TestCheckService_Status(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("handles status requests", func(t *testing.T) {
 		health := &StatusResponse{Checks: make(map[string][]*Check)}
 		now := time.Now()
 		check := NewHealthyCheck(now, "1", "ms")
@@ -65,16 +65,17 @@ func TestCheckService_Status(t *testing.T) {
 }
 
 func TestHandler_Status(t *testing.T) {
-	now := time.Now()
-	client := New("0.0.1", clock.New(now).From(func() time.Time {
-		return now
-	}))
-	h := Handler{client: client}
-	res := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/health/status", nil)
-	h.Status(res, req)
-	assert.Equal(t, http.StatusOK, res.Code)
-	body := fmt.Sprintf(`{
+	t.Run("handles status requests", func(t *testing.T) {
+		now := time.Now()
+		client := New("0.0.1", clock.New(now).From(func() time.Time {
+			return now
+		}))
+		h := Handler{client: client}
+		res := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/health/status", nil)
+		h.Status(res, req)
+		assert.Equal(t, http.StatusOK, res.Code)
+		body := fmt.Sprintf(`{
 			"data": {
 				"version": "0.0.1", 
 				"status": "healthy", 
@@ -88,9 +89,10 @@ func TestHandler_Status(t *testing.T) {
 				}
 			}
 		}`,
-		now.Format(time.RFC3339Nano),
-		now.Sub(now)/(1000*1000*1000),
-	)
+			now.Format(time.RFC3339Nano),
+			now.Sub(now)/(1000*1000*1000),
+		)
 
-	assert.JSONEq(t, body, res.Body.String())
+		assert.JSONEq(t, body, res.Body.String())
+	})
 }

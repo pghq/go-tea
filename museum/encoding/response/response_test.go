@@ -11,20 +11,20 @@ import (
 )
 
 func TestSend(t *testing.T) {
-	t.Run("NoBody", func(t *testing.T) {
+	t.Run("sends no content response", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		Send(res, nil, nil)
 		assert.Equal(t, http.StatusNoContent, res.Code)
 	})
 
-	t.Run("EncodeError", func(t *testing.T) {
+	t.Run("raises encode errors", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		Send(res, req, New(func() {}))
 		assert.Equal(t, http.StatusInternalServerError, res.Code)
 	})
 
-	t.Run("MIMEError", func(t *testing.T) {
+	t.Run("raises MIME errors", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Accept", "application/js")
@@ -32,7 +32,7 @@ func TestSend(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, res.Code)
 	})
 
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can send", func(t *testing.T) {
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		now := time.Now()
@@ -51,7 +51,7 @@ func TestSend(t *testing.T) {
 }
 
 func TestBuilder_Cached(t *testing.T) {
-	t.Run("Now", func(t *testing.T) {
+	t.Run("can mark response as cached", func(t *testing.T) {
 		builder := New("test")
 		now := time.Now()
 		builder = builder.Cached(now)
@@ -61,7 +61,7 @@ func TestBuilder_Cached(t *testing.T) {
 }
 
 func TestBuilder_Cursor(t *testing.T) {
-	t.Run("Astro", func(t *testing.T) {
+	t.Run("can set value", func(t *testing.T) {
 		builder := New("test")
 		builder = builder.Cursor("Astro")
 		assert.NotNil(t, builder)
@@ -70,7 +70,7 @@ func TestBuilder_Cursor(t *testing.T) {
 }
 
 func TestNew(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		builder := New("test")
 		assert.NotNil(t, builder)
 	})

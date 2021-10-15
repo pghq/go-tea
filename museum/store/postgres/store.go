@@ -11,7 +11,7 @@ import (
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 const (
@@ -19,11 +19,11 @@ const (
 	DefaultSQLMaxOpenConns = 100
 )
 
-// Database is a client for interacting with Postgres.
-type Database struct {
-	pool            Pool
-	secondary       Pool
-	primaryDSN      string
+// Store is a client for interacting with Postgres.
+type Store struct {
+	pool       Pool
+	secondary  Pool
+	primaryDSN string
 	secondaryDSN    string
 	maxConns        int
 	maxConnLifetime time.Duration
@@ -31,52 +31,52 @@ type Database struct {
 }
 
 // MaxConns sets the max number of open connections.
-func (db *Database) MaxConns(conns int) *Database {
-	db.maxConns = conns
+func (s *Store) MaxConns(conns int) *Store {
+	s.maxConns = conns
 
-	return db
+	return s
 }
 
 // MaxConnLifetime sets the max lifetime for a connection.
-func (db *Database) MaxConnLifetime(timeout time.Duration) *Database {
-	db.maxConnLifetime = timeout
+func (s *Store) MaxConnLifetime(timeout time.Duration) *Store {
+	s.maxConnLifetime = timeout
 
-	return db
+	return s
 }
 
-func (db *Database) Connect() error {
-	primary, err := db.newPool(db.primaryDSN)
+func (s *Store) Connect() error {
+	primary, err := s.newPool(s.primaryDSN)
 	if err != nil {
 		return errors.Wrap(err)
 	}
 
-	db.pool = primary
-	secondary, err := db.newPool(db.secondaryDSN)
+	s.pool = primary
+	secondary, err := s.newPool(s.secondaryDSN)
 	if err != nil {
 		return errors.Wrap(err)
 	}
 
-	db.secondary = secondary
+	s.secondary = secondary
 
 	return nil
 }
 
-func (db *Database) IsConnected() bool {
-	return db.pool != nil && db.secondary != nil
+func (s *Store) IsConnected() bool {
+	return s.pool != nil && s.secondary != nil
 }
 
 // newPool creates a new concurrency safe pool
-func (db *Database) newPool(databaseURL string) (Pool, error) {
+func (s *Store) newPool(databaseURL string) (Pool, error) {
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 
 	config.ConnConfig.Logger = NewLogger()
-	config.MaxConnLifetime = db.maxConnLifetime
-	config.MaxConns = int32(db.maxConns)
+	config.MaxConnLifetime = s.maxConnLifetime
+	config.MaxConns = int32(s.maxConns)
 
-	pool, err := db.connect(context.Background(), config)
+	pool, err := s.connect(context.Background(), config)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -84,24 +84,24 @@ func (db *Database) newPool(databaseURL string) (Pool, error) {
 	return pool, nil
 }
 
-func (db *Database) Secondary(dsn string) *Database {
+func (s *Store) Secondary(dsn string) *Store {
 	if dsn != "" {
-		db.secondaryDSN = dsn
+		s.secondaryDSN = dsn
 	}
 
-	return db
+	return s
 }
 
-// New creates a new Postgres database client.
-func New(primary string) *Database {
-	db := Database{
+// NewStore creates a new Postgres database client.
+func NewStore(primary string) *Store {
+	s := Store{
 		primaryDSN:   primary,
 		secondaryDSN: primary,
 		connect:      pgxpool.ConnectConfig,
 	}
-	db.maxConns = DefaultSQLMaxOpenConns
+	s.maxConns = DefaultSQLMaxOpenConns
 
-	return &db
+	return &s
 }
 
 // Pool for executing db commands against.
@@ -142,7 +142,7 @@ func (c *Cursor) Error() error {
 }
 
 // NewCursor constructs a new cursor instance.
-func NewCursor(rows pgx.Rows) database.Cursor {
+func NewCursor(rows pgx.Rows) store.Cursor {
 	return &Cursor{
 		rows: rows,
 	}

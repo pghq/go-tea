@@ -9,14 +9,14 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		m := New()
 		assert.NotNil(t, m)
 	})
 }
 
 func TestMiddleware_Handle(t *testing.T) {
-	t.Run("NoPanic", func(t *testing.T) {
+	t.Run("handles panics", func(t *testing.T) {
 		defer func() {
 			err := recover()
 			if err != nil {
