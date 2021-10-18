@@ -10,15 +10,15 @@ import (
 	"github.com/pghq/go-museum/museum/internal/clock"
 )
 
-func TestInsert(t *testing.T) {
-	t.Run("EncodeKeyError", func(t *testing.T) {
-		c := New()
+func TestLRU_Insert(t *testing.T) {
+	t.Run("raises encode key errors", func(t *testing.T) {
+		c := NewLRU()
 		err := c.Insert(func() {}, "test", time.Minute)
 		assert.NotNil(t, err)
 	})
 
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+	t.Run("can insert", func(t *testing.T) {
+		c := NewLRU()
 		err := c.Insert("item", "test", time.Minute)
 		assert.Nil(t, err)
 		i, _ := c.Get("item")
@@ -26,16 +26,16 @@ func TestInsert(t *testing.T) {
 	})
 }
 
-func TestRemove(t *testing.T) {
-	t.Run("EncodeKeyError", func(t *testing.T) {
-		c := New()
+func TestLRU_Remove(t *testing.T) {
+	t.Run("raises encode key errors", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert(func() {}, "test", time.Minute)
 		err := c.Remove(func() {})
 		assert.NotNil(t, err)
 	})
 
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+	t.Run("can remove", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert("item", "test", time.Minute)
 		err := c.Remove("item")
 		assert.Nil(t, err)
@@ -45,22 +45,22 @@ func TestRemove(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	t.Run("EncodeKeyError", func(t *testing.T) {
-		c := New()
+	t.Run("raises encode key errors", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert(func() {}, "test", time.Minute)
 		_, err := c.Get(func() {})
 		assert.NotNil(t, err)
 	})
 
-	t.Run("NotFoundError", func(t *testing.T) {
-		c := New()
+	t.Run("raises not found errors", func(t *testing.T) {
+		c := NewLRU()
 		_, err := c.Get("item")
 		assert.NotNil(t, err)
 		assert.False(t, errors.IsFatal(err))
 	})
 
-	t.Run("CastError", func(t *testing.T) {
-		c := New()
+	t.Run("raises casting errors", func(t *testing.T) {
+		c := NewLRU()
 		key, _ := encodeKey("item")
 		c.lru.Add(key, "test")
 		_, err := c.Get("item")
@@ -68,8 +68,8 @@ func TestGet(t *testing.T) {
 		assert.True(t, errors.IsFatal(err))
 	})
 
-	t.Run("ExpiredError", func(t *testing.T) {
-		c := New()
+	t.Run("raises expiration errors", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert("item", "test", time.Nanosecond)
 		time.Sleep(time.Nanosecond)
 		_, err := c.Get("item")
@@ -77,8 +77,8 @@ func TestGet(t *testing.T) {
 		assert.False(t, errors.IsFatal(err))
 	})
 
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+	t.Run("can retrieve values", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert("item", "test", time.Minute)
 		i, _ := c.Get("item")
 		assert.NotNil(t, i)
@@ -86,9 +86,9 @@ func TestGet(t *testing.T) {
 	})
 }
 
-func TestLen(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+func TestLRU_Len(t *testing.T) {
+	t.Run("calculates length", func(t *testing.T) {
+		c := NewLRU()
 		c.SetCapacity(1)
 		_ = c.Insert("item1", "test", time.Minute)
 		_ = c.Insert("item2", "test", time.Minute)
@@ -96,9 +96,9 @@ func TestLen(t *testing.T) {
 	})
 }
 
-func TestItemCachedAt(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+func TestItem_CachedAt(t *testing.T) {
+	t.Run("keeps track of cache time", func(t *testing.T) {
+		c := NewLRU()
 		now := time.Now()
 		c.setClock(clock.New(now).From(func() time.Time {
 			return now
@@ -110,9 +110,9 @@ func TestItemCachedAt(t *testing.T) {
 	})
 }
 
-func TestItemValue(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
-		c := New()
+func TestItem_Value(t *testing.T) {
+	t.Run("can retrieve underlying value", func(t *testing.T) {
+		c := NewLRU()
 		_ = c.Insert("item", "test", time.Minute)
 		i, _ := c.Get("item")
 		assert.NotNil(t, i)

@@ -7,30 +7,29 @@ import (
 	"github.com/jackc/pgx/v4"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 // Query creates a query for the database.
-func (db *Database) Query() database.Query {
-	return NewQuery(db)
+func (s *Store) Query() store.Query {
+	return NewQuery(s)
 }
 
 // Query is an instance of the repository query for Postgres.
 type Query struct {
-	db   *Database
-	pool Pool
+	store   *Store
 	opts []func(builder squirrel.SelectBuilder) squirrel.SelectBuilder
 }
 
-func (q *Query) Secondary() database.Query {
-	if q.db != nil {
-		q.pool = q.db.secondary
+func (q *Query) Secondary() store.Query {
+	if q.store != nil {
+		q.store.pool = q.store.secondary
 	}
 
 	return q
 }
 
-func (q *Query) From(collection string) database.Query {
+func (q *Query) From(collection string) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.From(collection)
 	})
@@ -38,7 +37,7 @@ func (q *Query) From(collection string) database.Query {
 	return q
 }
 
-func (q *Query) And(collection string, args ...interface{}) database.Query {
+func (q *Query) And(collection string, args ...interface{}) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.Join(collection, args...)
 	})
@@ -46,15 +45,15 @@ func (q *Query) And(collection string, args ...interface{}) database.Query {
 	return q
 }
 
-func (q *Query) Filter(filter string, args ...interface{}) database.Query {
+func (q *Query) Filter(filter store.Filter) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
-		return builder.Where(filter, args...)
+		return builder.Where(filter)
 	})
 
 	return q
 }
 
-func (q *Query) Order(by string) database.Query {
+func (q *Query) Order(by string) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.OrderBy(by)
 	})
@@ -62,7 +61,7 @@ func (q *Query) Order(by string) database.Query {
 	return q
 }
 
-func (q *Query) First(first uint) database.Query {
+func (q *Query) First(first int) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.Limit(uint64(first))
 	})
@@ -70,7 +69,7 @@ func (q *Query) First(first uint) database.Query {
 	return q
 }
 
-func (q *Query) After(key string, value interface{}) database.Query {
+func (q *Query) After(key string, value interface{}) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.Where(squirrel.GtOrEq{key: value})
 	})
@@ -78,7 +77,7 @@ func (q *Query) After(key string, value interface{}) database.Query {
 	return q
 }
 
-func (q *Query) Return(key string, args ...interface{}) database.Query {
+func (q *Query) Return(key string, args ...interface{}) store.Query {
 	q.opts = append(q.opts, func(builder squirrel.SelectBuilder) squirrel.SelectBuilder {
 		return builder.Column(key, args...)
 	})
@@ -98,13 +97,13 @@ func (q *Query) Statement() (string, []interface{}, error) {
 	return builder.ToSql()
 }
 
-func (q *Query) Execute(ctx context.Context) (database.Cursor, error) {
+func (q *Query) Execute(ctx context.Context) (store.Cursor, error) {
 	sql, args, err := q.Statement()
 	if err != nil {
 		return nil, errors.BadRequest(err)
 	}
 
-	rows, err := q.pool.Query(ctx, sql, args...)
+	rows, err := q.store.pool.Query(ctx, sql, args...)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, errors.NoContent(err)
@@ -116,24 +115,10 @@ func (q *Query) Execute(ctx context.Context) (database.Cursor, error) {
 	return NewCursor(rows), nil
 }
 
-func (q *Query) Decode(to database.Query) error {
-	nq, ok := to.(*Query)
-	if !ok {
-		return errors.NewBadRequest("not a postgres query")
-	}
-
-	nq.db = q.db
-	nq.pool = q.pool
-	nq.opts = append(q.opts, nq.opts...)
-
-	return nil
-}
-
 // NewQuery creates a new query for the Postgres database.
-func NewQuery(db *Database) *Query {
+func NewQuery(store *Store) *Query {
 	q := Query{
-		db:   db,
-		pool: db.pool,
+		store:   store,
 	}
 
 	return &q

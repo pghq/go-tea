@@ -249,8 +249,8 @@ github.com/onsi/gomega v1.10.3/go.mod h1:V9xEwhxec5O8UDM77eCW8vLymOMltsqPVYWrpDs
 github.com/onsi/gomega v1.15.0 h1:WjP/FQ/sk43MRmnEcT+MlDw2TFvkrXlprrPST/IudjU=
 github.com/onsi/gomega v1.15.0/go.mod h1:cIuvLEne0aoVhAgh/O6ac0Op8WWw9H6eYCriF+tEHG0=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
-github.com/pghq/go-eque v0.0.1 h1:ZFx9CyhnW7scyYptw2EBsLIBlZCfFmnPp5OfmAz1DuM=
-github.com/pghq/go-eque v0.0.1/go.mod h1:ShMDY8GQUVKs2l55s3ufPbLng09HDkJZh9xSDSenf7g=
+github.com/pghq/go-eque v0.0.2 h1:i/2iiiO4BQLSc7iucsYt6Q/guN8wHfuh3IB4Nitoi9A=
+github.com/pghq/go-eque v0.0.2/go.mod h1:ShMDY8GQUVKs2l55s3ufPbLng09HDkJZh9xSDSenf7g=
 github.com/pingcap/errors v0.11.4 h1:lFuQV/oaUMGcD2tqt+01ROSmJs75VG1ToEOkZIZ4nE4=
 github.com/pingcap/errors v0.11.4/go.mod h1:Oi8TUi2kEtXXLMJk9l1cGmz20kV3TaQ0usTwv5KuLY8=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

@@ -42,17 +42,17 @@ type Scheduler struct {
 	interval time.Duration
 	signals  struct {
 		stop     chan struct{}
-		stopping chan struct{}
 		stopped  chan struct{}
 	}
-	stopped        bool
-	queue          eque.Queue
+	queue          eque.RedQueue
 	enqueueTimeout time.Duration
 	dequeueTimeout time.Duration
 	lock           sync.RWMutex
 	tasks          map[string]*Task
 	completed      chan *Task
 	wg             sync.WaitGroup
+	notify func(t *Task)
+	notifyWorker func(msg eque.Message)
 }
 
 // Every sets the interval for checking for new jobs to scheduler.
@@ -76,49 +76,44 @@ func (s *Scheduler) DequeueTimeout(timeout time.Duration) *Scheduler {
 	return s
 }
 
+// Notify is executed after a task has been scheduled, ignored or otherwise errored while attempting to
+func (s *Scheduler) Notify(notify func (t *Task)) *Scheduler {
+	s.notify = notify
+
+	return s
+}
+
+// NotifyWorker is executed after a message has been popped or otherwise errored while attempting to
+func (s *Scheduler) NotifyWorker(notify func (msg eque.Message)) *Scheduler {
+	s.notifyWorker = notify
+
+	return s
+}
+
 // Start begins scheduling tasks.
-func (s *Scheduler) Start(after ...func()) {
-	s.stopped = false
+func (s *Scheduler) Start() {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	s.wg.Add(1)
 	go s.start(ctx)
 	log.Info("scheduler: started")
-	for _, f := range after {
-		f()
-	}
+
 	<-s.signals.stop
-	s.signals.stopping <- struct{}{}
-	wait := make(chan struct{}, 1)
+	cancel()
 	go func() {
 		s.wg.Wait()
-		wait <- struct{}{}
+		s.Stop()
 	}()
-
-	select {
-	case <-wait:
-	case <-s.signals.stop:
-	}
-	s.signals.stopped <- struct{}{}
+	<-s.signals.stop
 	log.Info("scheduler: stopped")
 }
 
 // Stop stops the scheduler and waits for background jobs to finish.
 func (s *Scheduler) Stop() {
-	s.signals.stop <- struct{}{}
-	<-s.signals.stopped
-	s.stopped = true
-}
-
-// IsStopped checks if the scheduler has completely stopped.
-func (s *Scheduler) IsStopped() bool {
-	return s.stopped
-}
-
-// IsStopping checks if the scheduler is awaiting a complete stop.
-func (s *Scheduler) IsStopping() bool {
-	return len(s.signals.stopping) > 0
+	select {
+	case s.signals.stop <- struct{}{}:
+	default:
+	}
 }
 
 // Add adds a task to be scheduled.
@@ -152,15 +147,16 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 		for {
 			dequeueCtx, cancel := context.WithTimeout(ctx, s.dequeueTimeout)
 			msg, err := s.queue.Dequeue(dequeueCtx)
-			if err != nil {
-				cancel()
-				errors.Emit(err)
-				break
-			}
 			cancel()
+			if err != nil {
+				if errors.IsFatal(err){
+					errors.Emit(err)
+				}
 
-			if msg == nil {
-				log.Debug("scheduler.worker.job: no queue messages")
+				if s.notifyWorker != nil{
+					go s.notifyWorker(nil)
+				}
+
 				break
 			}
 
@@ -169,6 +165,10 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 				defer func() {
 					if err := msg.Ack(ctx); err != nil {
 						errors.Emit(err)
+					}
+
+					if s.notifyWorker != nil{
+						go s.notifyWorker(msg)
 					}
 				}()
 
@@ -190,14 +190,13 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 
 func (s *Scheduler) start(ctx context.Context) {
 	defer s.wg.Done()
-	stopping := make(chan struct{}, 1)
 	go func() {
 		for {
-			<-time.After(s.interval)
-			if s.IsStopping() {
-				stopping <- struct{}{}
+			select {
+			case <-ctx.Done():
 				log.Info("scheduler: background task #1 stopped")
 				return
+			case <-time.After(s.interval):
 			}
 
 			now := time.Now()
@@ -207,19 +206,21 @@ func (s *Scheduler) start(ctx context.Context) {
 					continue
 				}
 
-				if task.IsComplete() {
-					s.completed <- task
-					task.Unlock()
-					continue
-				}
-
 				if !task.CanSchedule(now) {
 					task.Unlock()
+					if s.notify != nil{
+						go s.notify(task)
+					}
 					continue
 				}
 
 				go func(task *Task) {
-					defer task.Unlock()
+					defer func(){
+						task.Unlock()
+						if s.notify != nil{
+							go s.notify(task)
+						}
+					}()
 					ctx, cancel := context.WithTimeout(ctx, s.enqueueTimeout)
 					defer cancel()
 
@@ -227,7 +228,12 @@ func (s *Scheduler) start(ctx context.Context) {
 						errors.Emit(err)
 						return
 					}
+
 					task.MarkScheduled(now)
+					if task.IsComplete() {
+						s.completed <- task
+					}
+
 					log.Infof("scheduler: task=%s scheduled", task.Id)
 				}(task)
 			}
@@ -235,14 +241,13 @@ func (s *Scheduler) start(ctx context.Context) {
 		}
 	}()
 
-	stopped := make(chan struct{})
 	go func() {
 		for {
-			<-time.After(s.interval)
-			if len(stopping) != 0 {
-				stopped <- struct{}{}
+			select {
+			case <-ctx.Done():
 				log.Info("scheduler: background task #2 stopped")
 				return
+			case <-time.After(s.interval):
 			}
 
 			for removing := true; removing; {
@@ -259,11 +264,11 @@ func (s *Scheduler) start(ctx context.Context) {
 		}
 	}()
 
-	<-stopped
+	<-ctx.Done()
 }
 
 // New creates a scheduler instance.
-func New(queue eque.Queue) *Scheduler {
+func New(queue eque.RedQueue) *Scheduler {
 	s := Scheduler{
 		queue:          queue,
 		interval:       DefaultInterval,
@@ -271,11 +276,9 @@ func New(queue eque.Queue) *Scheduler {
 		dequeueTimeout: DefaultDequeueTimeout,
 		tasks:          make(map[string]*Task),
 		completed:      make(chan *Task),
-		stopped:        true,
 	}
 
 	s.signals.stop = make(chan struct{}, 1)
-	s.signals.stopping = make(chan struct{}, 1)
 	s.signals.stopped = make(chan struct{}, 1)
 
 	return &s

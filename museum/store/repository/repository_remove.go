@@ -3,14 +3,14 @@ package repository
 import (
 	"context"
 
-	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 // Remove removes items from the repository matching criteria.
-func (r *Repository) Remove(ctx context.Context, command database.Remove) (uint, error) {
-	if err := r.client.Remove().Decode(command); err != nil {
-		return 0, errors.BadRequest(err)
+func (r *Repository) Remove(ctx context.Context, collection string, filter store.Filter, first int) (int, error) {
+	command := r.client.Remove().From(collection).Filter(filter)
+	if first != 0{
+		command = command.First(first)
 	}
 
 	return command.Execute(ctx)

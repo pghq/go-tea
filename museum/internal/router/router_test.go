@@ -1,6 +1,7 @@
 package router
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -8,21 +9,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pghq/go-museum/museum/internal/test"
 )
 
 func TestNewRouter(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		r := NewRouter(0)
 		assert.NotNil(t, r)
 	})
 }
 
 func TestRouter_Get(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests").
 			ExpectRoute("/tests").
@@ -33,9 +32,9 @@ func TestRouter_Get(t *testing.T) {
 }
 
 func TestRouter_Post(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("routes methodr", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("POST").
 			Path("/v0/tests").
 			Body("test").
@@ -47,9 +46,9 @@ func TestRouter_Post(t *testing.T) {
 }
 
 func TestRouter_Put(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("PUT").
 			Path("/v0/tests/test").
 			Body("test").
@@ -61,9 +60,9 @@ func TestRouter_Put(t *testing.T) {
 }
 
 func TestRouter_Delete(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("DELETE").
 			Path("/v0/tests/test").
 			ExpectRoute("/tests/test").
@@ -74,10 +73,10 @@ func TestRouter_Delete(t *testing.T) {
 }
 
 func TestRouter_At(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("routes sub-path", func(t *testing.T) {
 		r := NewRouter(0).
 			At("/tests")
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests/test").
 			ExpectRoute("/test").
@@ -88,14 +87,14 @@ func TestRouter_At(t *testing.T) {
 }
 
 func TestRouter_Middleware(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("processes handler", func(t *testing.T) {
 		r := NewRouter(0).
 			Middleware(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusNoContent)
 				})
 			})
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests").
 			ExpectRoute("/tests").
@@ -106,7 +105,7 @@ func TestRouter_Middleware(t *testing.T) {
 }
 
 func TestNotFoundHandler(t *testing.T) {
-	t.Run("Status", func(t *testing.T) {
+	t.Run("sends response", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/tests", nil)
 		w := httptest.NewRecorder()
 
@@ -115,9 +114,9 @@ func TestNotFoundHandler(t *testing.T) {
 		assert.Equal(t, http.StatusText(http.StatusNotFound), w.Body.String())
 	})
 
-	t.Run("NotFoundError", func(t *testing.T) {
+	t.Run("routes not found", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests/test").
 			ExpectRoute("/tests").
@@ -129,7 +128,7 @@ func TestNotFoundHandler(t *testing.T) {
 }
 
 func TestMethodNotAllowedHandler(t *testing.T) {
-	t.Run("Status", func(t *testing.T) {
+	t.Run("sends response", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/tests", nil)
 		w := httptest.NewRecorder()
 
@@ -138,9 +137,9 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 		assert.Equal(t, http.StatusText(http.StatusMethodNotAllowed), w.Body.String())
 	})
 
-	t.Run("MethodNotAllowedError", func(t *testing.T) {
+	t.Run("routes method not allowed", func(t *testing.T) {
 		r := NewRouter(0)
-		req := test.NewRequest(t).
+		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests").
 			ExpectRoute("/tests").
@@ -152,7 +151,7 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 }
 
-func RequestTest(t *testing.T, r *Router, b *test.RequestBuilder) {
+func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 	t.Helper()
 	want := b.Response()
 
@@ -201,4 +200,99 @@ func RequestTest(t *testing.T, r *Router, b *test.RequestBuilder) {
 
 	assert.Equal(t, want.StatusCode, got.StatusCode)
 	assert.Equal(t, len(expected), len(body))
+}
+
+type RequestBuilder struct {
+	t      *testing.T
+	path   string
+	method string
+	body   string
+	router struct {
+		method string
+		path   string
+	}
+	response struct {
+		code int
+		body string
+	}
+}
+
+func (b *RequestBuilder) Method(method string) *RequestBuilder {
+	b.method = method
+	if b.router.method == "" {
+		b.router.method = method
+	}
+
+	return b
+}
+
+func (b *RequestBuilder) Path(path string) *RequestBuilder {
+	b.path = path
+
+	return b
+}
+
+func (b *RequestBuilder) Body(body string) *RequestBuilder {
+	b.body = body
+	return b
+}
+
+func (b *RequestBuilder) ExpectStatus(code int) *RequestBuilder {
+	b.response.code = code
+	return b
+}
+
+func (b *RequestBuilder) ExpectRoute(path string) *RequestBuilder {
+	b.router.path = path
+	return b
+}
+
+func (b *RequestBuilder) ExpectedRoute() string {
+	return b.router.path
+}
+
+func (b *RequestBuilder) ExpectMethod(method string) *RequestBuilder {
+	b.router.method = method
+	return b
+}
+
+func (b *RequestBuilder) ExpectedMethod() string {
+	return b.router.method
+}
+
+func (b *RequestBuilder) ExpectResponse(body string) *RequestBuilder {
+	b.response.body = body
+	return b
+}
+
+func (b *RequestBuilder) Request(base string) *http.Request {
+	b.t.Helper()
+	var body io.Reader
+	if b.body != "" {
+		body = io.NopCloser(strings.NewReader(b.body))
+	}
+
+	u := fmt.Sprintf("%s/%s", base, strings.TrimPrefix(b.path, "/"))
+	req, err := http.NewRequest(b.method, u, body)
+	assert.Nil(b.t, err)
+
+	return req
+}
+
+func (b *RequestBuilder) Response() *http.Response {
+	w := http.Response{
+		StatusCode: b.response.code,
+	}
+
+	if len(b.response.body) > 0 {
+		w.Body = io.NopCloser(strings.NewReader(b.response.body))
+	}
+
+	return &w
+}
+
+func NewRequest(t *testing.T) *RequestBuilder {
+	b := RequestBuilder{t: t}
+	b.response.code = http.StatusOK
+	return &b
 }

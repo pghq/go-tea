@@ -8,7 +8,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
 		now := time.Now()
 		c := New(now)
 		assert.NotNil(t, c)
@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestClock_From(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("can set new value", func(t *testing.T) {
 		now := time.Now()
 		c := New(now).From(func() time.Time {
 			return now
@@ -27,7 +27,7 @@ func TestClock_From(t *testing.T) {
 }
 
 func TestClock_Now(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("calculates current time", func(t *testing.T) {
 		now := time.Now()
 		c := New(now)
 		assert.NotNil(t, c)
@@ -36,7 +36,7 @@ func TestClock_Now(t *testing.T) {
 }
 
 func TestClock_Start(t *testing.T) {
-	t.Run("NoError", func(t *testing.T) {
+	t.Run("keeps track of start time", func(t *testing.T) {
 		now := time.Now()
 		c := New(now)
 		assert.NotNil(t, c)

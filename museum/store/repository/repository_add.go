@@ -8,7 +8,7 @@ import (
 )
 
 // Add adds items(s) to the repository
-func (r *Repository) Add(ctx context.Context, collection string, items ...store.Item) error {
+func (r *Repository) Add(ctx context.Context, collection string, items ...store.Snapper) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -20,11 +20,7 @@ func (r *Repository) Add(ctx context.Context, collection string, items ...store.
 	defer tx.Rollback()
 
 	for _, item := range items {
-		if err := item.Validate(); err != nil {
-			return errors.BadRequest(err)
-		}
-
-		command := r.client.Add().To(collection).Item(item.Map())
+		command := r.client.Add().To(collection).Item(item.Snapshot())
 		if _, err := tx.Execute(command); err != nil {
 			return errors.Wrap(err)
 		}

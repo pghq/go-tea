@@ -15,16 +15,21 @@ package repository
 
 import (
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/internal/database"
+	"github.com/pghq/go-museum/museum/store"
 )
 
 // Repository is an instance of a postgres Database
 type Repository struct {
-	client database.Client
+	client store.Client
+}
+
+// Filter gets a new filter for searching the repository.
+func (r *Repository) Filter() store.Filter{
+	return r.client.Filter()
 }
 
 // New creates a new postgres database
-func New(client database.Client) (*Repository, error) {
+func New(client store.Client) (*Repository, error) {
 	if client == nil {
 		return nil, errors.New("no database client provided")
 	}

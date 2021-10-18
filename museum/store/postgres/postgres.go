@@ -10,12 +10,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package test provides common utilities for testing various parts of the app.
-package test
-
-import (
-	"net/http"
-)
-
-// NoopHandler is a http handler that does nothing.
-var NoopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+// Package postgres provides a store implementation using Postgres.
+package postgres
