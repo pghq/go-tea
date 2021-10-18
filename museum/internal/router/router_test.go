@@ -59,6 +59,20 @@ func TestRouter_Put(t *testing.T) {
 	})
 }
 
+func TestRouter_Patch(t *testing.T) {
+	t.Run("routes method", func(t *testing.T) {
+		r := NewRouter(0)
+		req := NewRequest(t).
+			Method("PATCH").
+			Path("/v0/tests/test").
+			Body("test").
+			ExpectRoute("/tests/test").
+			ExpectResponse("ok")
+
+		RequestTest(t, r, req)
+	})
+}
+
 func TestRouter_Delete(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
@@ -180,6 +194,8 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 		r = r.Put(b.ExpectedRoute(), handlerFunc)
 	case "POST":
 		r = r.Post(b.ExpectedRoute(), handlerFunc)
+	case "PATCH":
+		r = r.Patch(b.ExpectedRoute(), handlerFunc)
 	case "DELETE":
 		r = r.Delete(b.ExpectedRoute(), handlerFunc)
 	default:
