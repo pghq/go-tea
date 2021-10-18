@@ -48,6 +48,13 @@ func (r *Router) Post(path string, handlerFunc http.HandlerFunc) *Router {
 	return r
 }
 
+// Patch adds a handler for the path using the PATCH http method
+func (r *Router) Patch(path string, handlerFunc http.HandlerFunc) *Router {
+	r.mux.HandleFunc(path, handlerFunc).Methods("PATCH", "OPTIONS")
+
+	return r
+}
+
 // Delete adds a handler for the path using the DELETE http method
 func (r *Router) Delete(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).Methods("DELETE", "OPTIONS")
