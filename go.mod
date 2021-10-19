@@ -13,8 +13,11 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20201024163028-a0d42d470451
 	github.com/jackc/pgproto3/v2 v2.1.1
 	github.com/jackc/pgx/v4 v4.13.0
+	github.com/lib/pq v1.10.3 // indirect
+	github.com/ory/dockertest/v3 v3.8.0
 	github.com/pghq/go-eque v0.0.2
 	github.com/pkg/errors v0.9.1
+	github.com/pressly/goose/v3 v3.2.0
 	github.com/rs/cors v1.8.0
 	github.com/rs/zerolog v1.25.0
 	github.com/stretchr/testify v1.7.0

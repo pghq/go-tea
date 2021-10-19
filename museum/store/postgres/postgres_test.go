@@ -3,6 +3,10 @@ package postgres
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"database/sql/driver"
+	"embed"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -18,12 +22,12 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 	"github.com/pghq/go-museum/museum/internal"
-	"github.com/pghq/go-museum/museum/mocking"
+	"github.com/pghq/go-museum/museum/pilot"
 )
 
 var (
-	_ Pool = NewPostgresPool(nil)
-	_ pgx.Tx = NewPostgresTx(nil)
+	_ Pool     = NewPostgresPool(nil)
+	_ pgx.Tx   = NewPostgresTx(nil)
 	_ pgx.Rows = NewPostgresRows(nil)
 )
 
@@ -53,6 +57,7 @@ func TestStore(t *testing.T) {
 	})
 
 	t.Run("can connect", func(t *testing.T) {
+		log.Writer(io.Discard)
 		s := NewStore("")
 		err := s.Connect()
 		assert.NotNil(t, err)
@@ -77,6 +82,36 @@ func TestStore(t *testing.T) {
 		assert.NotNil(t, s.pool)
 		assert.NotNil(t, s.secondary)
 		assert.True(t, s.IsConnected())
+	})
+
+	t.Run("raises sql open errors on migration", func(t *testing.T) {
+		s := NewStore("postgres://postgres:postgres@db:5432").
+			Migrations(embed.FS{}, "migrations")
+		s.connect = func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error) {
+			return &pgxpool.Pool{}, nil
+		}
+		s.migrations.open = func(driverName, dataSourceName string) (*sql.DB, error) {
+			return &sql.DB{}, errors.New("an error has occurred")
+		}
+		assert.NotNil(t, s)
+
+		err := s.Connect()
+		assert.NotNil(t, err)
+	})
+
+	t.Run("raises migration errors", func(t *testing.T) {
+		s := NewStore("postgres://postgres:postgres@db:5432").
+			Migrations(embed.FS{}, "migrations")
+		s.connect = func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error) {
+			return &pgxpool.Pool{}, nil
+		}
+		s.migrations.open = func(driverName, dataSourceName string) (*sql.DB, error) {
+			return sql.OpenDB(ErrConnector{}), nil
+		}
+		assert.NotNil(t, s)
+
+		err := s.Connect()
+		assert.NotNil(t, err)
 	})
 
 	t.Run("can create a new cursor", func(t *testing.T) {
@@ -159,37 +194,55 @@ func TestStore(t *testing.T) {
 		assert.False(t, IsIntegrityConstraintViolation(err))
 	})
 
-	l := NewLogger()
-	t.Run("can send debug logs", func(t *testing.T) {
-		log.Level("debug")
+	t.Run("can send pgx logs", func(t *testing.T) {
+		l := NewPGXLogger()
 		var buf bytes.Buffer
 		log.Writer(&buf)
+
+		log.Level("debug")
 		l.Log(context.TODO(), pgx.LogLevelDebug, "an error has occurred", nil)
 		assert.True(t, strings.Contains(buf.String(), "debug"))
-	})
 
-	t.Run("can send info logs", func(t *testing.T) {
+		buf.Reset()
 		log.Level("info")
-		var buf bytes.Buffer
-		log.Writer(&buf)
 		l.Log(context.TODO(), pgx.LogLevelInfo, "an error has occurred", nil)
 		assert.True(t, strings.Contains(buf.String(), "info"))
-	})
 
-	t.Run("can send warn logs", func(t *testing.T) {
+		buf.Reset()
 		log.Level("warn")
-		var buf bytes.Buffer
-		log.Writer(&buf)
 		l.Log(context.TODO(), pgx.LogLevelWarn, "an error has occurred", nil)
 		assert.True(t, strings.Contains(buf.String(), "warn"))
-	})
 
-	t.Run("can send error logs", func(t *testing.T) {
+		buf.Reset()
 		log.Level("error")
-		var buf bytes.Buffer
-		log.Writer(&buf)
 		l.Log(context.TODO(), pgx.LogLevelError, "an error has occurred", nil)
 		assert.True(t, strings.Contains(buf.String(), "error"))
+	})
+
+	t.Run("can send goose logs", func(t *testing.T) {
+		l := NewGooseLogger()
+		var buf bytes.Buffer
+		log.Writer(&buf)
+		log.Level("info")
+
+		l.Print("an error has occurred")
+		assert.True(t, strings.Contains(buf.String(), "an error has occurred"))
+
+		buf.Reset()
+		l.Printf("an %s has occurred", "error")
+		assert.True(t, strings.Contains(buf.String(), "an error has occurred"))
+
+		buf.Reset()
+		l.Println("an error has occurred")
+		assert.True(t, strings.Contains(buf.String(), "an error has occurred"))
+
+		buf.Reset()
+		l.Fatal("an error has occurred")
+		assert.True(t, strings.Contains(buf.String(), "an error has occurred"))
+
+		buf.Reset()
+		l.Fatalf("an %s has occurred", "error")
+		assert.True(t, strings.Contains(buf.String(), "an error has occurred"))
 	})
 }
 
@@ -429,7 +482,7 @@ func TestStore_Transaction(t *testing.T) {
 		ptx := NewPostgresTx(t)
 		defer ptx.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("Statement").
 			Return("", nil, errors.New("an error has occurred"))
 		defer add.Assert(t)
@@ -446,7 +499,7 @@ func TestStore_Transaction(t *testing.T) {
 			Return(0, errors.New("an error has occurred"))
 		defer ptx.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("Statement").
 			Return("", nil, nil)
 		defer add.Assert(t)
@@ -463,7 +516,7 @@ func TestStore_Transaction(t *testing.T) {
 			Return(pgconn.CommandTag{}, nil)
 		defer ptx.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("Statement").
 			Return("", nil, nil)
 		defer add.Assert(t)
@@ -638,33 +691,33 @@ func TestStore_Filter(t *testing.T) {
 		sql, args, err := squirrel.Select("column").From("tests").Where(f).ToSql()
 		assert.Nil(t, err)
 		assert.Equal(t, "SELECT column FROM tests WHERE eq = ? AND (eq = ? OR lt < ?) AND (eq = ? AND (eq = ? OR lt < ?) AND gt > ? AND ne <> ? AND prefix LIKE ? AND suffix LIKE ? AND containsString LIKE ? AND containsSlice IN (?,?,?) AND containsNumber IN (?) AND notContainsString NOT LIKE ? AND notContainsSlice NOT IN (?,?,?) AND notContainsNumber NOT IN (?))", sql)
-		assert.Equal(t, []interface {}{1, 1, 2, 1, 1, 2, 3, 4, "%5", "6%", "%7%", 8, 9, 10, 11, "%7%", 8, 9, 10, 11}, args)
+		assert.Equal(t, []interface{}{1, 1, 2, 1, 1, 2, 3, 4, "%5", "6%", "%7%", 8, 9, 10, 11, "%7%", 8, 9, 10, 11}, args)
 	})
 }
 
 type PostgresPool struct {
 	internal.Mock
-	t     *testing.T
+	t *testing.T
 }
 
 func (p *PostgresPool) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 	p.t.Helper()
 	res := p.Call(p.t, append([]interface{}{ctx, sql}, args...)...)
-	if len(res) != 2{
+	if len(res) != 2 {
 		p.Fatalf(p.t, "length of return values for Exec is not equal to 2")
 	}
 
-	if res[1] != nil{
+	if res[1] != nil {
 		err, ok := res[1].(error)
-		if !ok{
-			p.Fatalf(p.t,"return value #2 of Exec is not an error")
+		if !ok {
+			p.Fatalf(p.t, "return value #2 of Exec is not an error")
 		}
 		return nil, err
 	}
 
 	tag, ok := res[0].(pgconn.CommandTag)
-	if !ok{
-		p.Fatalf(p.t,"return value #1 of Exec is not a pgconn.CommandTag")
+	if !ok {
+		p.Fatalf(p.t, "return value #1 of Exec is not a pgconn.CommandTag")
 	}
 
 	return tag, nil
@@ -683,7 +736,7 @@ func setup(t *testing.T) (*Store, *PostgresPool, *PostgresPool) {
 	s.connect = func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error) {
 		t.Helper()
 		assert.NotNil(t, config)
-		assert.IsType(t, &Logger{}, config.ConnConfig.Logger)
+		assert.IsType(t, &PGXLogger{}, config.ConnConfig.Logger)
 		assert.Equal(t, int32(DefaultSQLMaxOpenConns), config.MaxConns)
 		assert.Equal(t, time.Duration(0), config.MaxConnLifetime)
 		assert.Equal(t, s.primaryDSN, config.ConnString())
@@ -703,21 +756,21 @@ func setup(t *testing.T) (*Store, *PostgresPool, *PostgresPool) {
 func (p *PostgresPool) Begin(ctx context.Context) (pgx.Tx, error) {
 	p.t.Helper()
 	res := p.Call(p.t, ctx)
-	if len(res) != 2{
+	if len(res) != 2 {
 		p.Fatalf(p.t, "length of return values for Begin is not equal to 1")
 	}
 
-	if res[1] != nil{
+	if res[1] != nil {
 		err, ok := res[1].(error)
-		if !ok{
-			p.Fatalf(p.t,"return value #2 of Begin is not an error")
+		if !ok {
+			p.Fatalf(p.t, "return value #2 of Begin is not an error")
 		}
 		return nil, err
 	}
 
 	tx, ok := res[0].(pgx.Tx)
-	if !ok{
-		p.Fatalf(p.t,"return value #1 of Begin is not a pgx.Tx")
+	if !ok {
+		p.Fatalf(p.t, "return value #1 of Begin is not a pgx.Tx")
 	}
 
 	return tx, nil
@@ -725,20 +778,20 @@ func (p *PostgresPool) Begin(ctx context.Context) (pgx.Tx, error) {
 
 type PostgresTx struct {
 	internal.Mock
-	t        *testing.T
+	t *testing.T
 }
 
 func (tx *PostgresTx) Commit(ctx context.Context) error {
 	tx.t.Helper()
 	res := tx.Call(tx.t, ctx)
-	if len(res) != 1{
+	if len(res) != 1 {
 		tx.Fatalf(tx.t, "length of return values for Commit is not equal to 1")
 	}
 
 	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			tx.Fatalf(tx.t,"return value #1 of Commit is not an error")
+		if !ok {
+			tx.Fatalf(tx.t, "return value #1 of Commit is not an error")
 		}
 		return err
 	}
@@ -749,14 +802,14 @@ func (tx *PostgresTx) Commit(ctx context.Context) error {
 func (tx *PostgresTx) Rollback(ctx context.Context) error {
 	tx.t.Helper()
 	res := tx.Call(tx.t, ctx)
-	if len(res) != 1{
+	if len(res) != 1 {
 		tx.Fatalf(tx.t, "length of return values for Rollback is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			tx.Fatalf(tx.t,"return value #1 of Rollback is not an error")
+		if !ok {
+			tx.Fatalf(tx.t, "return value #1 of Rollback is not an error")
 		}
 		return err
 	}
@@ -767,21 +820,21 @@ func (tx *PostgresTx) Rollback(ctx context.Context) error {
 func (tx *PostgresTx) Exec(ctx context.Context, sql string, args ...interface{}) (pgconn.CommandTag, error) {
 	tx.t.Helper()
 	res := tx.Call(tx.t, append([]interface{}{ctx, sql}, args...)...)
-	if len(res) != 2{
+	if len(res) != 2 {
 		tx.Fatalf(tx.t, "length of return values for Exec is not equal to 2")
 	}
 
-	if res[1] != nil{
+	if res[1] != nil {
 		err, ok := res[1].(error)
-		if !ok{
-			tx.Fatalf(tx.t,"return value #2 of Exec is not an error")
+		if !ok {
+			tx.Fatalf(tx.t, "return value #2 of Exec is not an error")
 		}
 		return nil, err
 	}
 
 	tag, ok := res[0].(pgconn.CommandTag)
-	if !ok{
-		tx.Fatalf(tx.t,"return value #2 of Exec is not a pgconn.CommandTag")
+	if !ok {
+		tx.Fatalf(tx.t, "return value #2 of Exec is not a pgconn.CommandTag")
 	}
 
 	return tag, nil
@@ -836,21 +889,21 @@ func NewPostgresTx(t *testing.T) *PostgresTx {
 func (p *PostgresPool) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	p.t.Helper()
 	res := p.Call(p.t, append([]interface{}{ctx, sql}, args...)...)
-	if len(res) != 2{
+	if len(res) != 2 {
 		p.Fatalf(p.t, "length of return values for Query is not equal to 2")
 	}
 
-	if res[1] != nil{
+	if res[1] != nil {
 		err, ok := res[1].(error)
-		if !ok{
-			p.Fatalf(p.t,"return value #2 of Err is not an error")
+		if !ok {
+			p.Fatalf(p.t, "return value #2 of Err is not an error")
 		}
 		return nil, err
 	}
 
 	rows, ok := res[0].(pgx.Rows)
-	if !ok{
-		p.Fatalf(p.t,"return value #1 of Query is not a pgx.Rows")
+	if !ok {
+		p.Fatalf(p.t, "return value #1 of Query is not a pgx.Rows")
 	}
 
 	return rows, nil
@@ -864,7 +917,7 @@ type PostgresRows struct {
 func (r *PostgresRows) Close() {
 	r.t.Helper()
 	res := r.Call(r.t)
-	if len(res) != 0{
+	if len(res) != 0 {
 		r.Fatalf(r.t, "length of return values for Close is not equal to 0")
 	}
 }
@@ -872,14 +925,14 @@ func (r *PostgresRows) Close() {
 func (r *PostgresRows) Err() error {
 	r.t.Helper()
 	res := r.Call(r.t)
-	if len(res) != 1{
+	if len(res) != 1 {
 		r.Fatalf(r.t, "length of return values for Err is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			r.Fatalf(r.t,"return value #1 of Err is not an error")
+		if !ok {
+			r.Fatalf(r.t, "return value #1 of Err is not an error")
 		}
 		return err
 	}
@@ -890,13 +943,13 @@ func (r *PostgresRows) Err() error {
 func (r *PostgresRows) Next() bool {
 	r.t.Helper()
 	res := r.Call(r.t)
-	if len(res) != 1{
+	if len(res) != 1 {
 		r.Fatalf(r.t, "length of return values for Next is not equal to 1")
 	}
 
 	next, ok := res[0].(bool)
-	if !ok{
-		r.Fatalf(r.t,"return value #1 of Next is not a bool")
+	if !ok {
+		r.Fatalf(r.t, "return value #1 of Next is not a bool")
 	}
 
 	return next
@@ -905,14 +958,14 @@ func (r *PostgresRows) Next() bool {
 func (r *PostgresRows) Scan(dest ...interface{}) error {
 	r.t.Helper()
 	res := r.Call(r.t, dest...)
-	if len(res) != 1{
+	if len(res) != 1 {
 		r.Fatalf(r.t, "length of return values for Scan is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			r.Fatalf(r.t,"return value #1 of Scan is not an error")
+		if !ok {
+			r.Fatalf(r.t, "return value #1 of Scan is not an error")
 		}
 		return err
 	}
@@ -940,4 +993,14 @@ func NewPostgresRows(t *testing.T) *PostgresRows {
 	rows := PostgresRows{t: t}
 
 	return &rows
+}
+
+type ErrConnector struct{}
+
+func (e ErrConnector) Connect(ctx context.Context) (driver.Conn, error) {
+	return nil, errors.New("an error has occurred")
+}
+
+func (e ErrConnector) Driver() driver.Driver {
+	panic("not imlemented")
 }

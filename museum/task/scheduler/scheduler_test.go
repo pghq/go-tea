@@ -16,6 +16,12 @@ import (
 	"github.com/pghq/go-museum/museum/internal"
 )
 
+func TestMain(m *testing.M){
+	log.Writer(io.Discard)
+	code := m.Run()
+	os.Exit(code)
+}
+
 func TestNew(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
 		queue := NewEqueQueue(t)
@@ -57,8 +63,6 @@ func TestScheduler_DequeueTimeout(t *testing.T) {
 }
 
 func TestScheduler_Add(t *testing.T) {
-	log.Writer(io.Discard)
-
 	t.Run("raises missing id errors", func(t *testing.T) {
 		queue := NewEqueQueue(t)
 		task := NewTask("")
@@ -89,8 +93,6 @@ func TestScheduler_Add(t *testing.T) {
 }
 
 func TestScheduler_Start(t *testing.T) {
-	log.Writer(io.Discard)
-	log.Writer(os.Stderr)
 	t.Run("raises enqueue errors", func(t *testing.T) {
 		task := NewTask("test")
 		queue := NewEqueQueue(t)
@@ -231,7 +233,7 @@ func TestScheduler_Worker(t *testing.T) {
 				scheduled <- struct{}{}
 			}).
 			NotifyWorker(func(msg eque.Message) {
-				if msg != nil{
+				if msg != nil {
 					done <- struct{}{}
 				}
 			})
@@ -271,7 +273,7 @@ func TestScheduler_Worker(t *testing.T) {
 				scheduled <- struct{}{}
 			}).
 			NotifyWorker(func(msg eque.Message) {
-				if msg != nil{
+				if msg != nil {
 					done <- struct{}{}
 				}
 			})
@@ -352,38 +354,38 @@ func TestTask_SetRecurrence(t *testing.T) {
 
 type EqueQueue struct {
 	internal.Mock
-	t       *testing.T
+	t      *testing.T
 	values chan interface{}
 }
 
 func (e *EqueQueue) Dequeue(ctx context.Context) (eque.Message, error) {
 	e.t.Helper()
 
-	select{
-		case <-e.values:
-			res := e.Call(e.t, ctx)
-			if len(res) != 2{
-				e.Fatalf(e.t, "length of return values for Dequeue is not equal to 2")
+	select {
+	case <-e.values:
+		res := e.Call(e.t, ctx)
+		if len(res) != 2 {
+			e.Fatalf(e.t, "length of return values for Dequeue is not equal to 2")
+		}
+
+		if res[1] != nil {
+			err, ok := res[1].(error)
+			if !ok {
+				e.Fatalf(e.t, "return value #2 of Dequeue is not an error")
 			}
 
-			if res[1] != nil{
-				err, ok := res[1].(error)
-				if !ok{
-					e.Fatalf(e.t,"return value #2 of Dequeue is not an error")
-				}
+			return nil, err
+		}
 
-				return nil, err
+		if res[0] != nil {
+			message, ok := res[0].(eque.Message)
+			if !ok {
+				e.Fatalf(e.t, "return value #1 of Dequeue is not a eque.Message")
 			}
+			return message, nil
+		}
 
-			if res[0] != nil{
-				message, ok := res[0].(eque.Message)
-				if !ok{
-					e.Fatalf(e.t,"return value #1 of Dequeue is not a eque.Message")
-				}
-				return message, nil
-			}
-
-			return nil, nil
+		return nil, nil
 	default:
 		return nil, eque.ErrNoMessages
 	}
@@ -392,21 +394,21 @@ func (e *EqueQueue) Dequeue(ctx context.Context) (eque.Message, error) {
 func (e *EqueQueue) Enqueue(ctx context.Context, id string, value interface{}) error {
 	e.t.Helper()
 	select {
-		case e.values <- value:
-			res := e.Call(e.t, ctx, id, value)
-			if len(res) != 1{
-				e.Fatalf(e.t, "length of return values for Enqueue is not equal to 1")
-			}
+	case e.values <- value:
+		res := e.Call(e.t, ctx, id, value)
+		if len(res) != 1 {
+			e.Fatalf(e.t, "length of return values for Enqueue is not equal to 1")
+		}
 
-			if res[0] != nil{
-				err, ok := res[0].(error)
-				if !ok{
-					e.Fatalf(e.t,"return value #1 of Enqueue is not an error")
-				}
-				return err
+		if res[0] != nil {
+			err, ok := res[0].(error)
+			if !ok {
+				e.Fatalf(e.t, "return value #1 of Enqueue is not an error")
 			}
+			return err
+		}
 
-			return nil
+		return nil
 	default:
 		return eque.ErrAcquireLockFailed
 	}
@@ -414,7 +416,7 @@ func (e *EqueQueue) Enqueue(ctx context.Context, id string, value interface{}) e
 
 func NewEqueQueue(t *testing.T) *EqueQueue {
 	q := EqueQueue{
-		t: t,
+		t:      t,
 		values: make(chan interface{}, 1),
 	}
 
@@ -423,20 +425,20 @@ func NewEqueQueue(t *testing.T) *EqueQueue {
 
 type EqueMessage struct {
 	internal.Mock
-	t   *testing.T
+	t    *testing.T
 	lock sync.Mutex
 }
 
 func (m *EqueMessage) Id() string {
 	m.t.Helper()
 	res := m.Call(m.t)
-	if len(res) != 1{
+	if len(res) != 1 {
 		m.Fatalf(m.t, "length of return values for Id is not equal to 1")
 	}
 
 	id, ok := res[0].(string)
-	if !ok{
-		m.Fatalf(m.t,"return value #1 of Id is not a string")
+	if !ok {
+		m.Fatalf(m.t, "return value #1 of Id is not a string")
 	}
 
 	return id
@@ -445,14 +447,14 @@ func (m *EqueMessage) Id() string {
 func (m *EqueMessage) Ack(ctx context.Context) error {
 	m.t.Helper()
 	res := m.Call(m.t, ctx)
-	if len(res) != 1{
+	if len(res) != 1 {
 		m.Fatalf(m.t, "length of return values for Ack is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			m.Fatalf(m.t,"return value #1 of Ack is not an error")
+		if !ok {
+			m.Fatalf(m.t, "return value #1 of Ack is not an error")
 		}
 
 		return err
@@ -464,14 +466,14 @@ func (m *EqueMessage) Ack(ctx context.Context) error {
 func (m *EqueMessage) Reject(ctx context.Context) error {
 	m.t.Helper()
 	res := m.Call(m.t, ctx)
-	if len(res) != 1{
+	if len(res) != 1 {
 		m.Fatalf(m.t, "length of return values for Reject is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			m.Fatalf(m.t,"return value #1 of Reject is not an error")
+		if !ok {
+			m.Fatalf(m.t, "return value #1 of Reject is not an error")
 		}
 
 		return err
@@ -483,14 +485,14 @@ func (m *EqueMessage) Reject(ctx context.Context) error {
 func (m *EqueMessage) Decode(v interface{}) error {
 	m.t.Helper()
 	res := m.Call(m.t, v)
-	if len(res) != 1{
+	if len(res) != 1 {
 		m.Fatalf(m.t, "length of return values for Decode is not equal to 1")
 	}
 
-	if res[0] != nil{
+	if res[0] != nil {
 		err, ok := res[0].(error)
-		if !ok{
-			m.Fatalf(m.t,"return value #1 of Decode is not an error")
+		if !ok {
+			m.Fatalf(m.t, "return value #1 of Decode is not an error")
 		}
 
 		return err

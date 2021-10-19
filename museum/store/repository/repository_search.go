@@ -7,7 +7,7 @@ import (
 )
 
 // Query gets a new query for searching the repository.
-func (r *Repository) Query() store.Query{
+func (r *Repository) Query() store.Query {
 	return r.client.Query()
 }
 

@@ -34,12 +34,9 @@ const (
 type Worker struct {
 	instances int
 	interval  time.Duration
-	signals   struct {
-		stop     chan struct{}
-		stopped  chan struct{}
-	}
-	jobs    []Job
-	wg      sync.WaitGroup
+	stop      chan struct{}
+	jobs      []Job
+	wg        sync.WaitGroup
 }
 
 // Start begins processing tasks.
@@ -52,13 +49,13 @@ func (w *Worker) Start() {
 
 	log.Infof("worker: workers=%d, started", w.instances)
 
-	<-w.signals.stop
+	<-w.stop
 	cancel()
 	go func() {
 		w.wg.Wait()
 		w.Stop()
 	}()
-	<-w.signals.stop
+	<-w.stop
 	log.Info("worker: stopped")
 }
 
@@ -79,7 +76,7 @@ func (w *Worker) Every(interval time.Duration) *Worker {
 // Stop stops the worker and waits for all instances to terminate.
 func (w *Worker) Stop() {
 	select {
-	case w.signals.stop <- struct{}{}:
+	case w.stop <- struct{}{}:
 	default:
 	}
 }
@@ -91,9 +88,9 @@ func (w *Worker) start(ctx context.Context, instance int) {
 		wg := sync.WaitGroup{}
 		for {
 			select {
-				case <-ctx.Done():
-					return
-				case <-time.After(w.interval):
+			case <-ctx.Done():
+				return
+			case <-time.After(w.interval):
 			}
 
 			for i, job := range w.jobs {
@@ -114,9 +111,9 @@ func (w *Worker) start(ctx context.Context, instance int) {
 				}(i, job)
 			}
 
-			go func(){
+			go func() {
 				wg.Wait()
-				stopped <- struct {}{}
+				stopped <- struct{}{}
 			}()
 
 			select {
@@ -137,9 +134,9 @@ func New(jobs ...Job) *Worker {
 		instances: DefaultInstances,
 		interval:  DefaultInterval,
 		jobs:      jobs,
+		stop:      make(chan struct{}, 1),
 	}
 
-	w.signals.stop = make(chan struct{}, 1)
 	return &w
 }
 

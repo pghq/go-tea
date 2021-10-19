@@ -2,12 +2,16 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
+	"io/fs"
 	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/pressly/goose/v3"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
@@ -21,13 +25,19 @@ const (
 
 // Store is a client for interacting with Postgres.
 type Store struct {
-	pool       Pool
-	secondary  Pool
-	primaryDSN string
+	connected       bool
+	pool            Pool
+	secondary       Pool
+	primaryDSN      string
 	secondaryDSN    string
 	maxConns        int
 	maxConnLifetime time.Duration
-	connect         func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error)
+	migrations      struct {
+		open      func(driverName, dataSourceName string) (*sql.DB, error)
+		fs        fs.FS
+		directory string
+	}
+	connect func(ctx context.Context, config *pgxpool.Config) (*pgxpool.Pool, error)
 }
 
 // MaxConns sets the max number of open connections.
@@ -40,6 +50,22 @@ func (s *Store) MaxConns(conns int) *Store {
 // MaxConnLifetime sets the max lifetime for a connection.
 func (s *Store) MaxConnLifetime(timeout time.Duration) *Store {
 	s.maxConnLifetime = timeout
+
+	return s
+}
+
+func (s *Store) Secondary(dsn string) *Store {
+	if dsn != "" {
+		s.secondaryDSN = dsn
+	}
+
+	return s
+}
+
+// Migrations sets the database migration configuration
+func (s *Store) Migrations(fs fs.FS, directory string) *Store {
+	s.migrations.fs = fs
+	s.migrations.directory = directory
 
 	return s
 }
@@ -58,11 +84,27 @@ func (s *Store) Connect() error {
 
 	s.secondary = secondary
 
+	if s.migrations.fs != nil && s.migrations.directory != "" {
+		db, err := s.migrations.open("postgres", s.primaryDSN)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		defer db.Close()
+		goose.SetLogger(NewGooseLogger())
+		goose.SetBaseFS(s.migrations.fs)
+		if err := goose.Up(db, s.migrations.directory); err != nil {
+			_ = goose.Down(db, s.migrations.directory)
+			return errors.Wrap(err)
+		}
+	}
+
+	s.connected = true
+
 	return nil
 }
 
 func (s *Store) IsConnected() bool {
-	return s.pool != nil && s.secondary != nil
+	return s.connected
 }
 
 // newPool creates a new concurrency safe pool
@@ -72,7 +114,7 @@ func (s *Store) newPool(databaseURL string) (Pool, error) {
 		return nil, errors.Wrap(err)
 	}
 
-	config.ConnConfig.Logger = NewLogger()
+	config.ConnConfig.Logger = NewPGXLogger()
 	config.MaxConnLifetime = s.maxConnLifetime
 	config.MaxConns = int32(s.maxConns)
 
@@ -84,14 +126,6 @@ func (s *Store) newPool(databaseURL string) (Pool, error) {
 	return pool, nil
 }
 
-func (s *Store) Secondary(dsn string) *Store {
-	if dsn != "" {
-		s.secondaryDSN = dsn
-	}
-
-	return s
-}
-
 // NewStore creates a new Postgres database client.
 func NewStore(primary string) *Store {
 	s := Store{
@@ -100,6 +134,7 @@ func NewStore(primary string) *Store {
 		connect:      pgxpool.ConnectConfig,
 	}
 	s.maxConns = DefaultSQLMaxOpenConns
+	s.migrations.open = sql.Open
 
 	return &s
 }
@@ -148,10 +183,10 @@ func NewCursor(rows pgx.Rows) store.Cursor {
 	}
 }
 
-// Logger is an instance of the pgx Logger
-type Logger struct{}
+// PGXLogger is an instance of the pgx Logger
+type PGXLogger struct{}
 
-func (l *Logger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map[string]interface{}) {
+func (l *PGXLogger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map[string]interface{}) {
 	switch level {
 	case pgx.LogLevelDebug:
 		log.Debug(msg)
@@ -160,13 +195,41 @@ func (l *Logger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map[st
 	case pgx.LogLevelWarn:
 		log.Warn(msg)
 	default:
-		log.Error(errors.New(msg))
+		errors.Emit(errors.New(msg))
 	}
 }
 
-// NewLogger creates a new database pgx Logger
-func NewLogger() *Logger {
-	return &Logger{}
+// NewPGXLogger creates a new database pgx Logger
+func NewPGXLogger() *PGXLogger {
+	return &PGXLogger{}
+}
+
+// GooseLogger is a custom logger for the goose package
+type GooseLogger struct{}
+
+func (g *GooseLogger) Fatal(v ...interface{}) {
+	errors.Emit(errors.New(fmt.Sprint(v...)))
+}
+
+func (g *GooseLogger) Fatalf(format string, v ...interface{}) {
+	errors.Emit(errors.New(fmt.Sprintf(format, v...)))
+}
+
+func (g *GooseLogger) Print(v ...interface{}) {
+	log.Info(fmt.Sprint(v...))
+}
+
+func (g *GooseLogger) Println(v ...interface{}) {
+	log.Info(fmt.Sprintln(v...))
+}
+
+func (g *GooseLogger) Printf(format string, v ...interface{}) {
+	log.Infof(format, v...)
+}
+
+// NewGooseLogger creates a new goose logger
+func NewGooseLogger() *GooseLogger {
+	return &GooseLogger{}
 }
 
 // IsIntegrityConstraintViolation checks if the error is an integrity constraint violation.

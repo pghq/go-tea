@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/mocking"
+	"github.com/pghq/go-museum/museum/pilot"
 )
 
 func TestRepository(t *testing.T) {
@@ -17,7 +17,7 @@ func TestRepository(t *testing.T) {
 	})
 
 	t.Run("raises error on disconnected client", func(t *testing.T) {
-		client := mocking.NewDisconnectedStore(t)
+		client := pilot.NewDisconnectedStore(t)
 		client.Expect("IsConnected").Return(false)
 		defer client.Assert(t)
 
@@ -26,7 +26,7 @@ func TestRepository(t *testing.T) {
 	})
 
 	t.Run("can create instance", func(t *testing.T) {
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		defer client.Assert(t)
 
 		r, err := New(client)
@@ -37,7 +37,7 @@ func TestRepository(t *testing.T) {
 
 func TestRepository_Add(t *testing.T) {
 	t.Run("ignores undefined items", func(t *testing.T) {
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		defer client.Assert(t)
 
 		r, _ := New(client)
@@ -46,14 +46,14 @@ func TestRepository_Add(t *testing.T) {
 	})
 
 	t.Run("raises transaction errors", func(t *testing.T) {
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Transaction", context.TODO()).
 			Return(nil, errors.New("an error has occurred"))
 		defer client.Assert(t)
 
 		r, _ := New(client)
 
-		item := mocking.NewSnapper(t)
+		item := pilot.NewSnapper(t)
 		defer item.Assert(t)
 
 		err := r.Add(context.TODO(), "tests", item)
@@ -61,32 +61,32 @@ func TestRepository_Add(t *testing.T) {
 	})
 
 	t.Run("raises execution errors", func(t *testing.T) {
-		expect := mocking.NewAdd(t)
+		expect := pilot.NewAdd(t)
 		expect.Expect("To", "tests").
 			Return(expect)
 		expect.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(expect)
 
-		transaction := mocking.NewTransaction(t)
+		transaction := pilot.NewTransaction(t)
 		transaction.Expect("Execute", expect.To("tests").Item(map[string]interface{}{"key": 1337})).
 			Return(nil, errors.New("an error has occurred"))
 		transaction.Expect("Rollback").
 			Return(nil)
 		defer transaction.Assert(t)
 
-		item := mocking.NewSnapper(t)
+		item := pilot.NewSnapper(t)
 		item.Expect("Snapshot").
 			Return(map[string]interface{}{"key": 1337})
 		defer item.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("To", "tests").
 			Return(add)
 		add.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(add)
 		defer add.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Transaction", context.TODO()).
 			Return(transaction, nil)
 		client.Expect("Add").
@@ -100,13 +100,13 @@ func TestRepository_Add(t *testing.T) {
 	})
 
 	t.Run("raises commit errors", func(t *testing.T) {
-		expect := mocking.NewAdd(t)
+		expect := pilot.NewAdd(t)
 		expect.Expect("To", "tests").
 			Return(expect)
 		expect.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(expect)
 
-		transaction := mocking.NewTransaction(t)
+		transaction := pilot.NewTransaction(t)
 		transaction.Expect("Execute", expect.To("tests").Item(map[string]interface{}{"key": 1337})).
 			Return(0, nil)
 		transaction.Expect("Commit").
@@ -115,19 +115,19 @@ func TestRepository_Add(t *testing.T) {
 			Return(nil)
 		defer transaction.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("To", "tests").
 			Return(add)
 		add.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(add)
 		defer add.Assert(t)
 
-		item := mocking.NewSnapper(t)
+		item := pilot.NewSnapper(t)
 		item.Expect("Snapshot").
 			Return(map[string]interface{}{"key": 1337})
 		defer item.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Transaction", context.TODO()).
 			Return(transaction, nil)
 		client.Expect("Add").
@@ -141,13 +141,13 @@ func TestRepository_Add(t *testing.T) {
 	})
 
 	t.Run("can add", func(t *testing.T) {
-		expect := mocking.NewAdd(t)
+		expect := pilot.NewAdd(t)
 		expect.Expect("To", "tests").
 			Return(expect)
 		expect.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(expect)
 
-		transaction := mocking.NewTransaction(t)
+		transaction := pilot.NewTransaction(t)
 		transaction.Expect("Execute", expect.To("tests").Item(map[string]interface{}{"key": 1337})).
 			Return(0, nil)
 		transaction.Expect("Commit").
@@ -156,19 +156,19 @@ func TestRepository_Add(t *testing.T) {
 			Return(nil)
 		defer transaction.Assert(t)
 
-		add := mocking.NewAdd(t)
+		add := pilot.NewAdd(t)
 		add.Expect("To", "tests").
 			Return(add)
 		add.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(add)
 		defer add.Assert(t)
 
-		item := mocking.NewSnapper(t)
+		item := pilot.NewSnapper(t)
 		item.Expect("Snapshot").
 			Return(map[string]interface{}{"key": 1337})
 		defer item.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Transaction", context.TODO()).
 			Return(transaction, nil)
 		client.Expect("Add").
@@ -184,9 +184,9 @@ func TestRepository_Add(t *testing.T) {
 
 func TestRepository_Search(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Query").
-			Return(mocking.NewQuery(t))
+			Return(pilot.NewQuery(t))
 		defer client.Assert(t)
 
 		r, _ := New(client)
@@ -194,12 +194,12 @@ func TestRepository_Search(t *testing.T) {
 	})
 
 	t.Run("can execute", func(t *testing.T) {
-		query := mocking.NewQuery(t)
+		query := pilot.NewQuery(t)
 		query.Expect("Execute", context.TODO()).
-			Return(mocking.NewCursor(t), nil)
+			Return(pilot.NewCursor(t), nil)
 		defer query.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		defer client.Assert(t)
 
 		r, _ := New(client)
@@ -210,7 +210,7 @@ func TestRepository_Search(t *testing.T) {
 
 func TestRepository_Remove(t *testing.T) {
 	t.Run("can execute", func(t *testing.T) {
-		remove := mocking.NewRemove(t)
+		remove := pilot.NewRemove(t)
 		remove.Expect("From", "tests").
 			Return(remove)
 		remove.Expect("Filter", nil).
@@ -221,7 +221,7 @@ func TestRepository_Remove(t *testing.T) {
 			Return(0, nil)
 		defer remove.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Remove").
 			Return(remove)
 		defer client.Assert(t)
@@ -234,9 +234,9 @@ func TestRepository_Remove(t *testing.T) {
 
 func TestRepository_Filter(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Filter").
-			Return(mocking.NewFilter(t))
+			Return(pilot.NewFilter(t))
 		defer client.Assert(t)
 
 		r, _ := New(client)
@@ -246,23 +246,23 @@ func TestRepository_Filter(t *testing.T) {
 
 func TestRepository_Update(t *testing.T) {
 	t.Run("can execute", func(t *testing.T) {
-		item := mocking.NewSnapper(t)
+		item := pilot.NewSnapper(t)
 		item.Expect("Snapshot").
 			Return(map[string]interface{}{"key": 1337})
 		defer item.Assert(t)
 
-		update := mocking.NewUpdate(t)
+		update := pilot.NewUpdate(t)
 		update.Expect("In", "tests").
 			Return(update)
 		update.Expect("Filter", nil).
 			Return(update)
-		update.Expect("Item", map[string]interface {}{"key":1337}).
+		update.Expect("Item", map[string]interface{}{"key": 1337}).
 			Return(update)
 		update.Expect("Execute", context.TODO()).
 			Return(0, nil)
 		defer update.Assert(t)
 
-		client := mocking.NewStore(t)
+		client := pilot.NewStore(t)
 		client.Expect("Update").
 			Return(update)
 		defer client.Assert(t)

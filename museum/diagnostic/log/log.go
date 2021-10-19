@@ -16,7 +16,6 @@ package log
 import (
 	"fmt"
 	"io"
-	"net/http"
 )
 
 // Writer sets the Writer for the global Logger
@@ -32,9 +31,9 @@ func Level(level string) {
 }
 
 // Debug sends a debug level message
-func Debug(msg string) *Logger {
+func Debug(v ...interface{}) *Logger {
 	l := CurrentLogger()
-	return l.Debug(msg)
+	return l.Debug(fmt.Sprint(v...))
 }
 
 // Debugf sends a formatted debug level message
@@ -43,9 +42,9 @@ func Debugf(format string, args ...interface{}) *Logger {
 }
 
 // Info sends an info level message
-func Info(msg string) *Logger {
+func Info(v ...interface{}) *Logger {
 	l := CurrentLogger()
-	return l.Info(msg)
+	return l.Info(fmt.Sprint(v...))
 }
 
 // Infof sends a formatted info level message
@@ -54,24 +53,12 @@ func Infof(format string, args ...interface{}) *Logger {
 }
 
 // Warn sends a warning level message
-func Warn(msg string) *Logger {
+func Warn(v ...interface{}) *Logger {
 	l := CurrentLogger()
-	return l.Warn(msg)
+	return l.Warn(fmt.Sprint(v...))
 }
 
 // Warnf sends a formatted warning level message
 func Warnf(format string, args ...interface{}) *Logger {
 	return Warn(fmt.Sprintf(format, args...))
-}
-
-// Error sends a error level message
-func Error(err error) *Logger {
-	l := CurrentLogger()
-	return l.Error(err)
-}
-
-// HTTPError sends a http error level message
-func HTTPError(r *http.Request, status int, err error) *Logger {
-	l := CurrentLogger()
-	return l.HTTPError(r, status, err)
 }

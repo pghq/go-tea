@@ -16,8 +16,8 @@ func (s *Store) Update() store.Update {
 
 // Update is an instance of the update repository command using Postgres.
 type Update struct {
-	store   *Store
-	opts []func(builder squirrel.UpdateBuilder) squirrel.UpdateBuilder
+	store *Store
+	opts  []func(builder squirrel.UpdateBuilder) squirrel.UpdateBuilder
 }
 
 func (a *Update) In(collection string) store.Update {

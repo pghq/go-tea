@@ -16,8 +16,8 @@ func (s *Store) Remove() store.Remove {
 
 // Remove is an instance of the repository remove command for Postgres.
 type Remove struct {
-	store   *Store
-	opts []func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder
+	store *Store
+	opts  []func(builder squirrel.DeleteBuilder) squirrel.DeleteBuilder
 }
 
 func (r *Remove) From(collection string) store.Remove {
