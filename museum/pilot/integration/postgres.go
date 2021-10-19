@@ -25,14 +25,23 @@ const (
 
 // Postgres is an integration for running postgres tests using docker
 type Postgres struct {
-	Main       *testing.M
+	m       *testing.M
 	Repository *repository.Repository
 	Migration  struct {
-		fs        fs.FS
-		directory string
+		FS        fs.FS
+		Directory string
 	}
 	ImageTag     string
 	ContainerTTL time.Duration
+}
+
+// NewPostgres creates a new integration test for postgres
+func NewPostgres(m *testing.M) *Postgres{
+	p := Postgres{
+		m: m,
+	}
+
+	return &p
 }
 
 // RunPostgres runs a new postgres integration
@@ -81,7 +90,7 @@ func RunPostgres(integration *Postgres) {
 
 	connect := func() error {
 		primary := fmt.Sprintf("postgres://test:test@localhost:%s/test?sslmode=disable", resource.GetPort("5432/tcp"))
-		store := postgres.NewStore(primary).Migrations(integration.Migration.fs, integration.Migration.directory)
+		store := postgres.NewStore(primary).Migrations(integration.Migration.FS, integration.Migration.Directory)
 		if err := store.Connect(); err != nil {
 			return errors.Wrap(err)
 		}
@@ -100,7 +109,7 @@ func RunPostgres(integration *Postgres) {
 		os.Exit(1)
 	}
 
-	code := integration.Main.Run()
+	code := integration.m.Run()
 
 	if err := pool.Purge(resource); err != nil {
 		errors.Emit(err)
