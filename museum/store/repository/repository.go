@@ -24,7 +24,7 @@ type Repository struct {
 }
 
 // Filter gets a new filter for searching the repository.
-func (r *Repository) Filter() store.Filter{
+func (r *Repository) Filter() store.Filter {
 	return r.client.Filter()
 }
 

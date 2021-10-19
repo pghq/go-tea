@@ -2,12 +2,15 @@ package response
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
 
 func TestSend(t *testing.T) {
@@ -18,6 +21,7 @@ func TestSend(t *testing.T) {
 	})
 
 	t.Run("raises encode errors", func(t *testing.T) {
+		log.Writer(io.Discard)
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		Send(res, req, New(func() {}))

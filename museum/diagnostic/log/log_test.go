@@ -2,7 +2,6 @@ package log
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -18,7 +17,6 @@ func TestDebug(t *testing.T) {
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := Debugf("%+v", errors.WithStack(errors.New("a log message")))
-		log.Print(buf.String())
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "debug")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
@@ -57,7 +55,7 @@ func TestError(t *testing.T) {
 		Level("error")
 		var buf bytes.Buffer
 		Writer(&buf)
-		logger := Error(errors.New("a log message"))
+		logger := CurrentLogger().Error(errors.New("a log message"))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "error")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
@@ -72,7 +70,7 @@ func TestHTTPError(t *testing.T) {
 		Level("error")
 		var buf bytes.Buffer
 		Writer(&buf)
-		logger := HTTPError(req, http.StatusBadRequest, errors.New("a log message"))
+		logger := CurrentLogger().HTTPError(req, http.StatusBadRequest, errors.New("a log message"))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "error")
 		assert.Contains(t, buf.String(), "/tests")

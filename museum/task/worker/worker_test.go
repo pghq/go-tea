@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"io"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,12 @@ import (
 
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
+
+func TestMain(m *testing.M){
+	log.Writer(io.Discard)
+	code := m.Run()
+	os.Exit(code)
+}
 
 func TestNew(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
@@ -35,8 +42,6 @@ func TestWorker_Concurrent(t *testing.T) {
 }
 
 func TestWorker_Start(t *testing.T) {
-	log.Writer(io.Discard)
-
 	t.Run("can run", func(t *testing.T) {
 		done := make(chan struct{}, 2)
 		job := func(ctx context.Context, stop func()) {

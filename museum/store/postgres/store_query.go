@@ -17,8 +17,8 @@ func (s *Store) Query() store.Query {
 
 // Query is an instance of the repository query for Postgres.
 type Query struct {
-	store   *Store
-	opts []func(builder squirrel.SelectBuilder) squirrel.SelectBuilder
+	store *Store
+	opts  []func(builder squirrel.SelectBuilder) squirrel.SelectBuilder
 }
 
 func (q *Query) Secondary() store.Query {
@@ -118,7 +118,7 @@ func (q *Query) Execute(ctx context.Context) (store.Cursor, error) {
 // NewQuery creates a new query for the Postgres database.
 func NewQuery(store *Store) *Query {
 	q := Query{
-		store:   store,
+		store: store,
 	}
 
 	return &q

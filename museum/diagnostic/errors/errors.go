@@ -115,11 +115,11 @@ func StatusCode(err error) int {
 		return http.StatusRequestTimeout
 	}
 
-	if errors.Is(err, eque.ErrNoMessages){
+	if errors.Is(err, eque.ErrNoMessages) {
 		return http.StatusBadRequest
 	}
 
-	if errors.Is(err, eque.ErrAcquireLockFailed){
+	if errors.Is(err, eque.ErrAcquireLockFailed) {
 		return http.StatusBadRequest
 	}
 
@@ -132,7 +132,8 @@ func Emit(err error) {
 		return
 	}
 
-	log.Error(err)
+	l := log.CurrentLogger()
+	l.Error(err)
 	monitor.Emit(err)
 }
 
@@ -143,7 +144,8 @@ func EmitHTTP(w http.ResponseWriter, r *http.Request, err error) {
 	status := StatusCode(err)
 	if IsFatal(err) {
 		m := CurrentMonitor()
-		log.HTTPError(r, status, err)
+		l := log.CurrentLogger()
+		l.HTTPError(r, status, err)
 		m.EmitHTTP(r, err)
 		msg = http.StatusText(status)
 	}
@@ -153,7 +155,7 @@ func EmitHTTP(w http.ResponseWriter, r *http.Request, err error) {
 
 // Recover recovers panics
 func Recover(err interface{}) {
-	if err != nil{
+	if err != nil {
 		m := CurrentMonitor()
 		m.Recover(err)
 	}

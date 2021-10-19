@@ -40,7 +40,8 @@ func (m *Monitor) EmitHTTP(r *http.Request, err error) {
 func (m *Monitor) Recover(err interface{}) {
 	sentry.CurrentHub().Recover(err)
 	sentry.Flush(m.flushTimeout)
-	log.Error(fmt.Errorf("%+v", err))
+	l := log.CurrentLogger()
+	l.Error(fmt.Errorf("%+v", err))
 }
 
 // NewMonitor creates a new monitor for handling errors

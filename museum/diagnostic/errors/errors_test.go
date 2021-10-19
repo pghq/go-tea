@@ -1,8 +1,10 @@
 package errors
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +14,8 @@ import (
 	"github.com/pghq/go-eque/eque"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
 
 func TestWrap(t *testing.T) {
@@ -146,13 +150,19 @@ func TestStatusCode(t *testing.T) {
 
 func TestEmit(t *testing.T) {
 	t.Run("emits fatal errors", func(t *testing.T) {
+		var buf bytes.Buffer
+		log.Writer(&buf)
 		err := New("an error has occurred")
 		Emit(err)
+		assert.Contains(t, buf.String(), "an error has occurred")
 	})
 
 	t.Run("emits non fatal errors", func(t *testing.T) {
+		var buf bytes.Buffer
+		log.Writer(&buf)
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
 		Emit(err)
+		assert.Empty(t, buf.String())
 	})
 }
 
@@ -160,29 +170,36 @@ func TestEmitHTTP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/tests", nil)
 
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
+		var buf bytes.Buffer
+		log.Writer(&buf)
 		w := httptest.NewRecorder()
 		err := New("an error has occurred")
 		EmitHTTP(w, req, err)
 		assert.Equal(t, 500, w.Code)
+		assert.Contains(t, buf.String(), "an error has occurred")
 	})
 
 	t.Run("emits non fatal errors to client", func(t *testing.T) {
+		var buf bytes.Buffer
+		log.Writer(&buf)
 		w := httptest.NewRecorder()
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
 		EmitHTTP(w, req, err)
 		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.Empty(t, buf.String())
 	})
 }
 
 func TestRecover(t *testing.T) {
 	t.Run("monitors panics", func(t *testing.T) {
-		defer func() { Recover(recover()) } ()
+		log.Writer(io.Discard)
+		defer func() { Recover(recover()) }()
 		panic("an error has occurred")
 	})
 }
 
 func TestInit(t *testing.T) {
-	t.Run("emits config errors", func(t *testing.T) {
+	t.Run("raises config errors", func(t *testing.T) {
 		conf := MonitorConfig{
 			Dsn: "https://localhost",
 		}

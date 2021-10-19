@@ -39,11 +39,8 @@ const (
 
 // Scheduler is an instance of a persistent background scheduler
 type Scheduler struct {
-	interval time.Duration
-	signals  struct {
-		stop     chan struct{}
-		stopped  chan struct{}
-	}
+	interval       time.Duration
+	stop           chan struct{}
 	queue          eque.RedQueue
 	enqueueTimeout time.Duration
 	dequeueTimeout time.Duration
@@ -51,8 +48,8 @@ type Scheduler struct {
 	tasks          map[string]*Task
 	completed      chan *Task
 	wg             sync.WaitGroup
-	notify func(t *Task)
-	notifyWorker func(msg eque.Message)
+	notify         func(t *Task)
+	notifyWorker   func(msg eque.Message)
 }
 
 // Every sets the interval for checking for new jobs to scheduler.
@@ -77,14 +74,14 @@ func (s *Scheduler) DequeueTimeout(timeout time.Duration) *Scheduler {
 }
 
 // Notify is executed after a task has been scheduled, ignored or otherwise errored while attempting to
-func (s *Scheduler) Notify(notify func (t *Task)) *Scheduler {
+func (s *Scheduler) Notify(notify func(t *Task)) *Scheduler {
 	s.notify = notify
 
 	return s
 }
 
 // NotifyWorker is executed after a message has been popped or otherwise errored while attempting to
-func (s *Scheduler) NotifyWorker(notify func (msg eque.Message)) *Scheduler {
+func (s *Scheduler) NotifyWorker(notify func(msg eque.Message)) *Scheduler {
 	s.notifyWorker = notify
 
 	return s
@@ -98,20 +95,20 @@ func (s *Scheduler) Start() {
 	go s.start(ctx)
 	log.Info("scheduler: started")
 
-	<-s.signals.stop
+	<-s.stop
 	cancel()
 	go func() {
 		s.wg.Wait()
 		s.Stop()
 	}()
-	<-s.signals.stop
+	<-s.stop
 	log.Info("scheduler: stopped")
 }
 
 // Stop stops the scheduler and waits for background jobs to finish.
 func (s *Scheduler) Stop() {
 	select {
-	case s.signals.stop <- struct{}{}:
+	case s.stop <- struct{}{}:
 	default:
 	}
 }
@@ -149,11 +146,11 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 			msg, err := s.queue.Dequeue(dequeueCtx)
 			cancel()
 			if err != nil {
-				if errors.IsFatal(err){
+				if errors.IsFatal(err) {
 					errors.Emit(err)
 				}
 
-				if s.notifyWorker != nil{
+				if s.notifyWorker != nil {
 					go s.notifyWorker(nil)
 				}
 
@@ -167,7 +164,7 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 						errors.Emit(err)
 					}
 
-					if s.notifyWorker != nil{
+					if s.notifyWorker != nil {
 						go s.notifyWorker(msg)
 					}
 				}()
@@ -208,16 +205,16 @@ func (s *Scheduler) start(ctx context.Context) {
 
 				if !task.CanSchedule(now) {
 					task.Unlock()
-					if s.notify != nil{
+					if s.notify != nil {
 						go s.notify(task)
 					}
 					continue
 				}
 
 				go func(task *Task) {
-					defer func(){
+					defer func() {
 						task.Unlock()
-						if s.notify != nil{
+						if s.notify != nil {
 							go s.notify(task)
 						}
 					}()
@@ -276,10 +273,8 @@ func New(queue eque.RedQueue) *Scheduler {
 		dequeueTimeout: DefaultDequeueTimeout,
 		tasks:          make(map[string]*Task),
 		completed:      make(chan *Task),
+		stop:           make(chan struct{}, 1),
 	}
-
-	s.signals.stop = make(chan struct{}, 1)
-	s.signals.stopped = make(chan struct{}, 1)
 
 	return &s
 }

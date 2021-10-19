@@ -16,8 +16,8 @@ func (s *Store) Add() store.Add {
 
 // Add is an instance of the add repository command using Postgres.
 type Add struct {
-	store   *Store
-	opts []func(builder squirrel.InsertBuilder) squirrel.InsertBuilder
+	store *Store
+	opts  []func(builder squirrel.InsertBuilder) squirrel.InsertBuilder
 }
 
 func (a *Add) To(collection string) store.Add {
