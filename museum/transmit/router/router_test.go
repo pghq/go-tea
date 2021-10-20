@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -23,6 +24,7 @@ func TestRouter_Get(t *testing.T) {
 		r := NewRouter(0)
 		req := NewRequest(t).
 			Method("GET").
+			Options(CacheFor(time.Second, time.Second)).
 			Path("/v0/tests").
 			ExpectRoute("/tests").
 			ExpectResponse("ok")
@@ -32,7 +34,7 @@ func TestRouter_Get(t *testing.T) {
 }
 
 func TestRouter_Post(t *testing.T) {
-	t.Run("routes methodr", func(t *testing.T) {
+	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
 		req := NewRequest(t).
 			Method("POST").
@@ -189,7 +191,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 
 	switch strings.ToUpper(b.ExpectedMethod()) {
 	case "GET":
-		r = r.Get(b.ExpectedRoute(), handlerFunc)
+		r = r.Get(b.ExpectedRoute(), handlerFunc, b.opts...)
 	case "PUT":
 		r = r.Put(b.ExpectedRoute(), handlerFunc)
 	case "POST":
@@ -223,6 +225,7 @@ type RequestBuilder struct {
 	path   string
 	method string
 	body   string
+	opts []Option
 	router struct {
 		method string
 		path   string
@@ -244,6 +247,12 @@ func (b *RequestBuilder) Method(method string) *RequestBuilder {
 
 func (b *RequestBuilder) Path(path string) *RequestBuilder {
 	b.path = path
+
+	return b
+}
+
+func (b *RequestBuilder) Options(opts ...Option) *RequestBuilder {
+	b.opts = opts
 
 	return b
 }

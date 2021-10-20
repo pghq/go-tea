@@ -16,20 +16,45 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 
-	"github.com/pghq/go-museum/museum/internal/middleware"
+	"github.com/pghq/go-museum/museum/store/cache"
+	"github.com/pghq/go-museum/museum/transmit/middleware"
+)
+
+const (
+	// DefaultPositiveCacheTTL is the default positive cache time
+	DefaultPositiveCacheTTL = 1 * time.Second
+
+	// DefaultNegativeCacheTTL is the default negative cache time
+	DefaultNegativeCacheTTL = 15 * time.Second
 )
 
 // Router is an instance of a mux based Router
 type Router struct {
 	mux *mux.Router
+	cache *cache.LRU
 }
 
 // Get adds a handler for the path using the GET http method
-func (r *Router) Get(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).Methods("GET", "OPTIONS")
+func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...Option) *Router {
+	conf := Config{
+		PositiveCacheTTL: DefaultPositiveCacheTTL,
+		NegativeCacheTTL: DefaultNegativeCacheTTL,
+	}
+
+	for _, opt := range opts{
+		opt.Apply(&conf)
+	}
+
+	if conf.PositiveCacheTTL != 0 || conf.NegativeCacheTTL != 0{
+		handlerFunc = cache.NewMiddleware(r.cache).Handle(handlerFunc).ServeHTTP
+	}
+
+	r.mux.HandleFunc(path, handlerFunc).
+		Methods("GET", "OPTIONS")
 
 	return r
 }
@@ -89,6 +114,7 @@ func NewRouter(version int) *Router {
 			StrictSlash(true).
 			PathPrefix(fmt.Sprintf("/v%d", version)).
 			Subrouter(),
+		cache: cache.NewLRU(),
 	}
 
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
@@ -107,4 +133,36 @@ func NotFoundHandler(w http.ResponseWriter, _ *http.Request) {
 func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, _ = w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
+}
+
+// Config for router
+type Config struct {
+	PositiveCacheTTL time.Duration
+	NegativeCacheTTL time.Duration
+}
+
+// Option for router
+type Option interface {
+	Apply(conf *Config)
+}
+
+// cacheOption is an option for caching for get requests.
+type cacheOption struct {
+	positive time.Duration
+	negative time.Duration
+}
+
+func (o cacheOption) Apply(conf *Config) {
+	if conf != nil {
+		conf.PositiveCacheTTL = o.positive
+		conf.NegativeCacheTTL = o.negative
+	}
+}
+
+// CacheFor creates a new router option for caching.
+func CacheFor(positive, negative time.Duration) Option {
+	return cacheOption{
+		positive: positive,
+		negative: negative,
+	}
 }

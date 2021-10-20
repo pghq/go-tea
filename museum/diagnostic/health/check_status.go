@@ -3,7 +3,7 @@ package health
 import (
 	"net/http"
 
-	"github.com/pghq/go-museum/museum/encoding/response"
+	"github.com/pghq/go-museum/museum/transmit/response"
 )
 
 const (
