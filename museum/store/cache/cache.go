@@ -18,6 +18,7 @@ import (
 	"crypto/sha1"
 	"encoding/gob"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
@@ -28,8 +29,12 @@ const (
 	DefaultCacheSize int = 1024
 )
 
-// encodeKey encodes the key into a format consistent and compatible with the Cache.
-func encodeKey(key interface{}) (string, error) {
+// Key encodes the key into a format consistent and compatible with the Cache.
+func Key(key interface{}) (string, error) {
+	if k, ok := key.(string); ok{
+		return k, nil
+	}
+
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	err := enc.Encode(key)
@@ -38,6 +43,23 @@ func encodeKey(key interface{}) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", sha1.Sum(buf.Bytes())), nil
+}
+
+// RequestKey encodes an http request to a key
+func RequestKey(r *http.Request) string {
+	var key struct{
+		Method string
+		Header http.Header
+		Url string
+	}
+
+	key.Method = r.Method
+	key.Header = r.Header
+	key.Url = r.URL.String()
+
+	k, _ := Key(key)
+
+	return k
 }
 
 // Item is an instance of a value in the lru Cache.

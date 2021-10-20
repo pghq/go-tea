@@ -19,7 +19,7 @@ type LRU struct {
 
 // Insert adds a value to the cache
 func (c *LRU) Insert(k interface{}, v interface{}, ttl time.Duration) error {
-	key, err := encodeKey(k)
+	key, err := Key(k)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -35,7 +35,7 @@ func (c *LRU) Insert(k interface{}, v interface{}, ttl time.Duration) error {
 
 // Remove deletes a value from the cache
 func (c *LRU) Remove(k interface{}) error {
-	key, err := encodeKey(k)
+	key, err := Key(k)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -47,7 +47,7 @@ func (c *LRU) Remove(k interface{}) error {
 
 // Get attempts to retrieve a value from the cache
 func (c *LRU) Get(k interface{}) (*Item, error) {
-	key, err := encodeKey(k)
+	key, err := Key(k)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}

@@ -10,5 +10,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package encoding provides resources for converting data between useful formats.
-package encoding
+// Package transmit provides resources for handling http request/responses.
+package transmit

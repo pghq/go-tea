@@ -225,3 +225,31 @@ func TestInit(t *testing.T) {
 		assert.Nil(t, err)
 	})
 }
+
+func TestNewMiddleware(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
+		m := NewMiddleware()
+		assert.NotNil(t, m)
+	})
+}
+
+func TestMiddleware_Handle(t *testing.T) {
+	t.Run("handles panics", func(t *testing.T) {
+		defer func() {
+			err := recover()
+			if err != nil {
+				t.Fatalf("panic not expected: %+v", err)
+			}
+		}()
+
+		m := NewMiddleware()
+		r := httptest.NewRequest("OPTIONS", "/tests", nil)
+		w := httptest.NewRecorder()
+
+		panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("an error has occurred")
+		})
+
+		m.Handle(panicHandler).ServeHTTP(w, r)
+	})
+}

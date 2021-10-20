@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/encoding/request"
+	"github.com/pghq/go-museum/museum/transmit/request"
 )
 
 // Send sends an HTTP response based on content type and body

@@ -22,9 +22,8 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/health"
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
-	"github.com/pghq/go-museum/museum/internal/middleware/cors"
-	"github.com/pghq/go-museum/museum/internal/middleware/monitor"
-	"github.com/pghq/go-museum/museum/internal/router"
+	"github.com/pghq/go-museum/museum/transmit/middleware/cors"
+	"github.com/pghq/go-museum/museum/transmit/router"
 )
 
 const (
@@ -78,7 +77,7 @@ func (a *App) Health() *health.Client {
 // Router provides a Router for serving http traffic.
 func (a *App) Router(origins ...string) *router.Router {
 	r := router.NewRouter(a.version.Segments()[0]).
-		Middleware(monitor.New().Handle, cors.New(origins...).Handle).
+		Middleware(errors.NewMiddleware().Handle, cors.New(origins...).Handle).
 		Get("/health/status", a.Health().Handler().Status)
 
 	return r
