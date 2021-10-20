@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/store"
 )
@@ -12,36 +14,42 @@ var (
 	_ store.Add = NewAdd(nil)
 )
 
-func (c *Store) Add() store.Add {
-	c.t.Helper()
-	res := c.Call(c.t)
+func (s *Store) Add() store.Add {
+	s.t.Helper()
+	res := s.Call(s.t)
 	if len(res) != 1 {
-		c.Fatalf(c.t, "length of return values for Add is not equal to 1")
+		s.fail(s.t, "unexpected length of return values")
+		return nil
 	}
 
 	add, ok := res[0].(store.Add)
 	if !ok {
-		c.Fatalf(c.t, "return value #1 of Add is not a store.Add")
+		s.fail(s.t, "unexpected type of return value")
+		return nil
 	}
 
 	return add
 }
 
+// Add is a mock store.Add
 type Add struct {
 	internal.Mock
 	t *testing.T
+	fail func(v ...interface{})
 }
 
 func (a *Add) Query(query store.Query) store.Add {
 	a.t.Helper()
 	res := a.Call(a.t, query)
 	if len(res) != 1 {
-		a.Fatalf(a.t, "length of return values for Query is not equal to 1")
+		a.fail(a.t, "unexpected length of return values")
+		return nil
 	}
 
 	add, ok := res[0].(store.Add)
 	if !ok {
-		a.Fatalf(a.t, "return value #1 of Query is not a store.Add")
+		a.fail(a.t, "unexpected type of return value")
+		return nil
 	}
 
 	return add
@@ -51,20 +59,23 @@ func (a *Add) Execute(ctx context.Context) (int, error) {
 	a.t.Helper()
 	res := a.Call(a.t, ctx)
 	if len(res) != 2 {
-		a.Fatalf(a.t, "length of return values for Execute is not equal to 2")
+		a.fail(a.t, "unexpected length of return values")
+		return 0, nil
 	}
 
 	if res[1] != nil {
 		err, ok := res[1].(error)
 		if !ok {
-			a.Fatalf(a.t, "return value #2 of Execute is not an error")
+			a.fail(a.t, "unexpected type of return value")
+			return 0, nil
 		}
 		return 0, err
 	}
 
 	count, ok := res[0].(int)
 	if !ok {
-		a.Fatalf(a.t, "return value #1 of Execute is not an int")
+		a.fail(a.t, "unexpected type of return value")
+		return 0, nil
 	}
 
 	return count, nil
@@ -74,26 +85,30 @@ func (a *Add) Statement() (string, []interface{}, error) {
 	a.t.Helper()
 	res := a.Call(a.t)
 	if len(res) != 3 {
-		a.Fatalf(a.t, "length of return values for Statement is not equal to 3")
+		a.fail(a.t, "unexpected length of return values")
+		return "", nil, nil
 	}
 
 	if res[2] != nil {
 		err, ok := res[2].(error)
 		if !ok {
-			a.Fatalf(a.t, "return value #3 of Statement is not an error")
+			a.fail(a.t, "unexpected type of return value")
+			return "", nil, nil
 		}
 		return "", nil, err
 	}
 
 	statement, ok := res[0].(string)
 	if !ok {
-		a.Fatalf(a.t, "return value #1 of Statement is not an string")
+		a.fail(a.t, "unexpected type of return value")
+		return "", nil, nil
 	}
 
 	if res[1] != nil {
 		args, ok := res[1].([]interface{})
 		if !ok {
-			a.Fatalf(a.t, "return value #2 of Statement is not an []interface{}")
+			a.fail(a.t, "unexpected type of return value")
+			return "", nil, nil
 		}
 		return statement, args, nil
 	}
@@ -105,12 +120,14 @@ func (a *Add) To(collection string) store.Add {
 	a.t.Helper()
 	res := a.Call(a.t, collection)
 	if len(res) != 1 {
-		a.Fatalf(a.t, "length of return values for To is not equal to 1")
+		a.fail(a.t, "unexpected length of return values")
+		return nil
 	}
 
 	add, ok := res[0].(store.Add)
 	if !ok {
-		a.Fatalf(a.t, "return value #1 of To is not a store.Add")
+		a.fail(a.t, "unexpected type of return value")
+		return nil
 	}
 
 	return add
@@ -120,19 +137,39 @@ func (a *Add) Item(value map[string]interface{}) store.Add {
 	a.t.Helper()
 	res := a.Call(a.t, value)
 	if len(res) != 1 {
-		a.Fatalf(a.t, "length of return values for Item is not equal to 1")
+		a.fail(a.t, "unexpected length of return values")
+		return nil
 	}
 
 	add, ok := res[0].(store.Add)
 	if !ok {
-		a.Fatalf(a.t, "return value #1 of Item is not a store.Add")
+		a.fail(a.t, "unexpected type of return value")
+		return nil
 	}
 
 	return add
 }
 
+// NewAdd creates a mock store.Add
 func NewAdd(t *testing.T) *Add {
-	a := Add{t: t}
+	a := Add{
+		t: t,
+	}
+
+	if t != nil{
+		a.fail = t.Fatal
+	}
 
 	return &a
+}
+
+// NewAddWithFail creates a mock store.Add with an expected failure
+func NewAddWithFail(t *testing.T, expect ...interface{}) *Add {
+	a := NewAdd(t)
+	a.fail = func(v ...interface{}) {
+		t.Helper()
+		assert.Equal(t, append([]interface{}{t}, expect...), v)
+	}
+
+	return a
 }

@@ -22,6 +22,7 @@ func TestSend(t *testing.T) {
 
 	t.Run("raises encode errors", func(t *testing.T) {
 		log.Writer(io.Discard)
+		defer log.Reset()
 		res := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		Send(res, req, New(func() {}))

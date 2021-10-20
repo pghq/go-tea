@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"

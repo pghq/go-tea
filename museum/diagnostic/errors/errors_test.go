@@ -152,6 +152,7 @@ func TestEmit(t *testing.T) {
 	t.Run("emits fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 		err := New("an error has occurred")
 		Emit(err)
 		assert.Contains(t, buf.String(), "an error has occurred")
@@ -160,6 +161,7 @@ func TestEmit(t *testing.T) {
 	t.Run("emits non fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
 		Emit(err)
 		assert.Empty(t, buf.String())
@@ -172,6 +174,7 @@ func TestEmitHTTP(t *testing.T) {
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 		w := httptest.NewRecorder()
 		err := New("an error has occurred")
 		EmitHTTP(w, req, err)
@@ -182,6 +185,7 @@ func TestEmitHTTP(t *testing.T) {
 	t.Run("emits non fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 		w := httptest.NewRecorder()
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
 		EmitHTTP(w, req, err)
@@ -193,6 +197,7 @@ func TestEmitHTTP(t *testing.T) {
 func TestRecover(t *testing.T) {
 	t.Run("monitors panics", func(t *testing.T) {
 		log.Writer(io.Discard)
+		defer log.Reset()
 		defer func() { Recover(recover()) }()
 		panic("an error has occurred")
 	})

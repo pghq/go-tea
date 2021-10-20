@@ -18,6 +18,7 @@ import (
 
 func TestMain(m *testing.M){
 	log.Writer(io.Discard)
+	defer log.Reset()
 	code := m.Run()
 	os.Exit(code)
 }

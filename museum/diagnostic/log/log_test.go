@@ -14,6 +14,7 @@ import (
 func TestDebug(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
 		Level("debug")
+		defer Reset()
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := Debugf("%+v", errors.WithStack(errors.New("a log message")))
@@ -27,6 +28,7 @@ func TestDebug(t *testing.T) {
 func TestInfo(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
 		Level("info")
+		defer Reset()
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := Infof("%+v", errors.WithStack(errors.New("a log message")))
@@ -40,6 +42,7 @@ func TestInfo(t *testing.T) {
 func TestWarn(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
 		Level("warn")
+		defer Reset()
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := Warnf("%+v", errors.WithStack(errors.New("a log message")))
@@ -53,6 +56,7 @@ func TestWarn(t *testing.T) {
 func TestError(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
 		Level("error")
+		defer Reset()
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := CurrentLogger().Error(errors.New("a log message"))
@@ -68,6 +72,7 @@ func TestHTTPError(t *testing.T) {
 
 	t.Run("logs message", func(t *testing.T) {
 		Level("error")
+		defer Reset()
 		var buf bytes.Buffer
 		Writer(&buf)
 		logger := CurrentLogger().HTTPError(req, http.StatusBadRequest, errors.New("a log message"))
