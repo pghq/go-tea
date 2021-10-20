@@ -58,6 +58,7 @@ func TestStore(t *testing.T) {
 
 	t.Run("can connect", func(t *testing.T) {
 		log.Writer(io.Discard)
+		defer log.Reset()
 		s := NewStore("")
 		err := s.Connect()
 		assert.NotNil(t, err)
@@ -198,6 +199,7 @@ func TestStore(t *testing.T) {
 		l := NewPGXLogger()
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 
 		log.Level("debug")
 		l.Log(context.TODO(), pgx.LogLevelDebug, "an error has occurred", nil)
@@ -223,6 +225,7 @@ func TestStore(t *testing.T) {
 		l := NewGooseLogger()
 		var buf bytes.Buffer
 		log.Writer(&buf)
+		defer log.Reset()
 		log.Level("info")
 
 		l.Print("an error has occurred")

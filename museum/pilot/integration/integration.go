@@ -11,5 +11,22 @@
 // limitations under the License.
 
 // Package integration provides resources for doing integration testing.
-// This package is largely untested. Use at your own risk...
 package integration
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+var (
+	// NoopRun is a test function for mocking testing.M
+	NoopRun = func() int { return 0 }
+)
+
+// ExpectExit is a test function for asserting exit codes when exit is called
+func ExpectExit(t *testing.T, expect int) func(code int){
+	return func(code int) {
+		assert.Equal(t, expect, code)
+	}
+}

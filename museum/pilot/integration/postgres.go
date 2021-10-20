@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/pghq/go-museum/museum/diagnostic/log"
 	"github.com/pghq/go-museum/museum/store/postgres"
 	"github.com/pghq/go-museum/museum/store/repository"
 )
@@ -19,13 +21,18 @@ const (
 	// DefaultContainerTTL is the default ttl for docker containers
 	DefaultContainerTTL = time.Minute
 
+	// DefaultMaxConnectTime is the default amount of time to allow connecting
+	DefaultMaxConnectTime = 30 * time.Second
+
 	// DefaultTag is the default tag for the postgres docker image
 	DefaultTag = "11"
+
+	// DefaultDockerEndpoint is the default docker endpoint for connections
+	DefaultDockerEndpoint = ""
 )
 
 // Postgres is an integration for running postgres tests using docker
 type Postgres struct {
-	m       *testing.M
 	Repository *repository.Repository
 	Migration  struct {
 		FS        fs.FS
@@ -33,12 +40,32 @@ type Postgres struct {
 	}
 	ImageTag     string
 	ContainerTTL time.Duration
+	MaxConnectTime time.Duration
+	DockerEndpoint string
+
+	exit func(code int)
+	run func() int
+	purge func(r *dockertest.Resource) error
+	emit func(err error)
 }
 
 // NewPostgres creates a new integration test for postgres
 func NewPostgres(m *testing.M) *Postgres{
 	p := Postgres{
-		m: m,
+		run: m.Run,
+		exit: os.Exit,
+		emit: errors.Emit,
+	}
+
+	return &p
+}
+
+// NewPostgresWithExit creates a new postgres image with an expected exit
+func NewPostgresWithExit(t *testing.T, code int) *Postgres{
+	p := Postgres{
+		run: NoopRun,
+		emit: errors.Emit,
+		exit: ExpectExit(t, code),
 	}
 
 	return &p
@@ -46,12 +73,6 @@ func NewPostgres(m *testing.M) *Postgres{
 
 // RunPostgres runs a new postgres integration
 func RunPostgres(integration *Postgres) {
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		errors.Emit(err)
-		os.Exit(1)
-	}
-
 	if integration.ContainerTTL == 0 {
 		integration.ContainerTTL = DefaultContainerTTL
 	}
@@ -60,6 +81,22 @@ func RunPostgres(integration *Postgres) {
 		integration.ImageTag = DefaultTag
 	}
 
+	if integration.MaxConnectTime == 0 {
+		integration.MaxConnectTime = DefaultMaxConnectTime
+	}
+
+	if integration.DockerEndpoint == ""{
+		integration.DockerEndpoint = DefaultDockerEndpoint
+	}
+
+	pool, err := dockertest.NewPool(integration.DockerEndpoint)
+	if err != nil {
+		integration.emit(err)
+		integration.exit(1)
+		return
+	}
+
+	pool.MaxWait = integration.MaxConnectTime
 	opts := dockertest.RunOptions{
 		Repository: "postgres",
 		Tag:        integration.ImageTag,
@@ -79,42 +116,50 @@ func RunPostgres(integration *Postgres) {
 	})
 
 	if err != nil {
-		errors.Emit(err)
-		os.Exit(1)
+		integration.emit(err)
+		integration.exit(1)
+		return
 	}
 
-	if err := resource.Expire(uint(integration.ContainerTTL.Seconds())); err != nil {
-		errors.Emit(err)
-		os.Exit(1)
-	}
-
+	// Unfortunately, this method does not do any error handling :(
+	_ = resource.Expire(uint(integration.ContainerTTL.Seconds()))
 	connect := func() error {
+		log.Writer(io.Discard)
+		defer log.Reset()
+
 		primary := fmt.Sprintf("postgres://test:test@localhost:%s/test?sslmode=disable", resource.GetPort("5432/tcp"))
 		store := postgres.NewStore(primary).Migrations(integration.Migration.FS, integration.Migration.Directory)
-		if err := store.Connect(); err != nil {
-			return errors.Wrap(err)
-		}
-
-		var err error
-		integration.Repository, err = repository.New(store)
-		if err != nil {
+		if err = store.Connect(); err != nil {
+			err = errors.Wrap(err)
 			return err
 		}
 
+		integration.Repository, _ = repository.New(store)
 		return nil
 	}
 
-	if err := pool.Retry(connect); err != nil {
-		errors.Emit(err)
-		os.Exit(1)
+	purge := pool.Purge
+	if integration.purge != nil{
+		purge = func(r *dockertest.Resource) error {
+			_ = pool.Purge(r)
+			return integration.purge(resource)
+		}
 	}
 
-	code := integration.m.Run()
-
-	if err := pool.Purge(resource); err != nil {
-		errors.Emit(err)
-		os.Exit(1)
+	if deadline := pool.Retry(connect); deadline != nil {
+		integration.emit(err)
+		_ = purge(resource)
+		integration.exit(1)
+		return
 	}
 
-	os.Exit(code)
+	code := integration.run()
+
+	if err := purge(resource); err != nil {
+		integration.emit(err)
+		integration.exit(1)
+		return
+	}
+
+	integration.exit(code)
 }

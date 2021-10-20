@@ -11,5 +11,4 @@
 // limitations under the License.
 
 // Package pilot provides resources for testing parts of the app.
-// This package is largely untested. Use at your own risk...
 package pilot
