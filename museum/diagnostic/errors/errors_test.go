@@ -148,13 +148,13 @@ func TestStatusCode(t *testing.T) {
 	})
 }
 
-func TestEmit(t *testing.T) {
+func TestSend(t *testing.T) {
 	t.Run("emits fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
 		defer log.Reset()
 		err := New("an error has occurred")
-		Emit(err)
+		Send(err)
 		assert.Contains(t, buf.String(), "an error has occurred")
 	})
 
@@ -163,12 +163,12 @@ func TestEmit(t *testing.T) {
 		log.Writer(&buf)
 		defer log.Reset()
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
-		Emit(err)
+		Send(err)
 		assert.Empty(t, buf.String())
 	})
 }
 
-func TestEmitHTTP(t *testing.T) {
+func TestSendHTTP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/tests", nil)
 
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestEmitHTTP(t *testing.T) {
 		defer log.Reset()
 		w := httptest.NewRecorder()
 		err := New("an error has occurred")
-		EmitHTTP(w, req, err)
+		SendHTTP(w, req, err)
 		assert.Equal(t, 500, w.Code)
 		assert.Contains(t, buf.String(), "an error has occurred")
 	})
@@ -188,7 +188,7 @@ func TestEmitHTTP(t *testing.T) {
 		defer log.Reset()
 		w := httptest.NewRecorder()
 		err := NewHTTP("an error has occurred", http.StatusNoContent)
-		EmitHTTP(w, req, err)
+		SendHTTP(w, req, err)
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Empty(t, buf.String())
 	})

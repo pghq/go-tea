@@ -38,14 +38,14 @@ func Send(w http.ResponseWriter, r *http.Request, body *Builder) {
 		contentType = "application/json"
 		encoder = json.NewEncoder(w)
 	default:
-		errors.EmitHTTP(w, r, errors.BadRequest(errors.New("unsupported MIME type")))
+		errors.SendHTTP(w, r, errors.BadRequest(errors.New("unsupported MIME type")))
 		return
 	}
 
 	w.Header().Set("Content-Type", contentType)
 	content := body.response()
 	if err := encoder.Encode(&content); err != nil {
-		errors.EmitHTTP(w, r, err)
+		errors.SendHTTP(w, r, err)
 		return
 	}
 }

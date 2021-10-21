@@ -196,7 +196,7 @@ func (l *PGXLogger) Log(_ context.Context, level pgx.LogLevel, msg string, _ map
 	case pgx.LogLevelWarn:
 		log.Warn(msg)
 	default:
-		errors.Emit(errors.New(msg))
+		errors.Send(errors.New(msg))
 	}
 }
 
@@ -209,11 +209,11 @@ func NewPGXLogger() *PGXLogger {
 type GooseLogger struct{}
 
 func (g *GooseLogger) Fatal(v ...interface{}) {
-	errors.Emit(errors.New(fmt.Sprint(v...)))
+	errors.Send(errors.New(fmt.Sprint(v...)))
 }
 
 func (g *GooseLogger) Fatalf(format string, v ...interface{}) {
-	errors.Emit(errors.New(fmt.Sprintf(format, v...)))
+	errors.Send(errors.New(fmt.Sprintf(format, v...)))
 }
 
 func (g *GooseLogger) Print(v ...interface{}) {

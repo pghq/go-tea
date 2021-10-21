@@ -15,7 +15,7 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
 
-func TestIntegration(t *testing.T){
+func TestPostgres(t *testing.T){
 	t.Run("can create main postgres", func(t *testing.T) {
 		test := NewPostgres(&testing.M{})
 		assert.NotNil(t, test)

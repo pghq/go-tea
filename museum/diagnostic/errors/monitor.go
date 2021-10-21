@@ -23,14 +23,14 @@ type Monitor struct {
 	flushTimeout time.Duration
 }
 
-// Emit sends an error to the backend monitor
-func (m *Monitor) Emit(err error) {
+// Send sends an error to the backend monitor
+func (m *Monitor) Send(err error) {
 	hub := sentry.CurrentHub().Clone()
 	hub.CaptureException(err)
 }
 
-// EmitHTTP sends an error decorated with a http request to the backend monitor
-func (m *Monitor) EmitHTTP(r *http.Request, err error) {
+// SendHTTP sends an error decorated with a http request to the backend monitor
+func (m *Monitor) SendHTTP(r *http.Request, err error) {
 	hub := sentry.CurrentHub().Clone()
 	hub.Scope().SetRequest(r)
 	hub.CaptureException(err)
