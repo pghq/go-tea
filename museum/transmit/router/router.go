@@ -97,7 +97,7 @@ func (r *Router) At(path string) *Router {
 // Middleware adds a handler to execute before/after the principle request handler
 func (r *Router) Middleware(middlewares ...middleware.Middleware) *Router {
 	for _, m := range middlewares {
-		r.mux.Use(mux.MiddlewareFunc(m))
+		r.mux.Use(m.Handle)
 	}
 
 	return r

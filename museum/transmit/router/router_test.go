@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pghq/go-museum/museum/transmit/middleware"
 )
 
 func TestNewRouter(t *testing.T) {
@@ -105,11 +107,11 @@ func TestRouter_At(t *testing.T) {
 func TestRouter_Middleware(t *testing.T) {
 	t.Run("processes handler", func(t *testing.T) {
 		r := NewRouter(0).
-			Middleware(func(next http.Handler) http.Handler {
+			Middleware(middleware.Func(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusNoContent)
 				})
-			})
+			}))
 		req := NewRequest(t).
 			Method("GET").
 			Path("/v0/tests").
