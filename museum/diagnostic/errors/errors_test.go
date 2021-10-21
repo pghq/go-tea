@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pghq/go-eque/eque"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
@@ -150,14 +149,6 @@ func TestStatusCode(t *testing.T) {
 		defer cancel()
 		time.Sleep(time.Microsecond)
 		assert.Equal(t, http.StatusRequestTimeout, StatusCode(ctx.Err()))
-	})
-
-	t.Run("detects status code for no eque messages errors", func(t *testing.T) {
-		assert.Equal(t, http.StatusBadRequest, StatusCode(eque.ErrNoMessages))
-	})
-
-	t.Run("detects status code for eque lock acquire errors", func(t *testing.T) {
-		assert.Equal(t, http.StatusBadRequest, StatusCode(eque.ErrAcquireLockFailed))
 	})
 
 	t.Run("detects status code for internal errors", func(t *testing.T) {
