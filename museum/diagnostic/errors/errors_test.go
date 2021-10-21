@@ -23,12 +23,14 @@ func TestWrap(t *testing.T) {
 		err := Wrap(New("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Less(t, 1, strings.Count(fmt.Sprintf("%+v", err), "\n"))
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 
 	t.Run("adds stacktrace to internal errors", func(t *testing.T) {
 		err := Wrap(errors.New("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Less(t, 1, strings.Count(fmt.Sprintf("%+v", err), "\n"))
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -36,23 +38,34 @@ func TestNew(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
 		err := New("an error has occurred")
 		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "an error has occurred")
+	})
+}
+
+func TestNewf(t *testing.T) {
+	t.Run("can create instance", func(t *testing.T) {
+		err := Newf("an %s has occurred", "error")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
 func TestHTTP(t *testing.T) {
 	t.Run("can cast", func(t *testing.T) {
-		err := HTTP(errors.New("an error has occurred"), http.StatusBadRequest)
+		err := HTTP(http.StatusBadRequest, errors.New("an error has occurred"))
 		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
 func TestNewHTTP(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		err := NewHTTP("an error has occurred", http.StatusConflict)
+		err := NewHTTP(http.StatusConflict, "an error has occurred")
 		assert.NotNil(t, err)
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusConflict, ae.code)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -63,6 +76,7 @@ func TestBadRequest(t *testing.T) {
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusBadRequest, ae.code)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -73,6 +87,7 @@ func TestNewBadRequest(t *testing.T) {
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusBadRequest, ae.code)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -83,6 +98,7 @@ func TestNoContent(t *testing.T) {
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusNoContent, ae.code)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -93,6 +109,7 @@ func TestNewNoContent(t *testing.T) {
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusNoContent, ae.code)
+		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 }
 
@@ -111,14 +128,14 @@ func TestIsFatal(t *testing.T) {
 	})
 
 	t.Run("can detect non fatal errors", func(t *testing.T) {
-		err := NewHTTP("an error has occurred", http.StatusNoContent)
+		err := NewHTTP(http.StatusNoContent, "an error has occurred")
 		assert.False(t, IsFatal(err))
 	})
 }
 
 func TestStatusCode(t *testing.T) {
 	t.Run("detects status code for no content errors", func(t *testing.T) {
-		err := NewHTTP("an error has occurred", http.StatusNoContent)
+		err := NewHTTP(http.StatusNoContent, "an error has occurred")
 		assert.Equal(t, http.StatusNoContent, StatusCode(err))
 	})
 
@@ -162,7 +179,7 @@ func TestSend(t *testing.T) {
 		var buf bytes.Buffer
 		log.Writer(&buf)
 		defer log.Reset()
-		err := NewHTTP("an error has occurred", http.StatusNoContent)
+		err := NewHTTP(http.StatusNoContent, "an error has occurred")
 		Send(err)
 		assert.Empty(t, buf.String())
 	})
@@ -187,7 +204,7 @@ func TestSendHTTP(t *testing.T) {
 		log.Writer(&buf)
 		defer log.Reset()
 		w := httptest.NewRecorder()
-		err := NewHTTP("an error has occurred", http.StatusNoContent)
+		err := NewHTTP(http.StatusNoContent, "an error has occurred")
 		SendHTTP(w, req, err)
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Empty(t, buf.String())

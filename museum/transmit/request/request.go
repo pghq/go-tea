@@ -41,7 +41,7 @@ const (
 func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	rd := CurrentDecoder()
 	if err := rd.Decode(r, v); err != nil {
-		return errors.HTTP(err, http.StatusBadRequest)
+		return errors.HTTP(http.StatusBadRequest, err)
 	}
 
 	if r.Body == http.NoBody {
@@ -50,7 +50,7 @@ func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return errors.HTTP(err, http.StatusBadRequest)
+		return errors.HTTP(http.StatusBadRequest, err)
 	}
 
 	_ = r.Body.Close()
@@ -61,10 +61,10 @@ func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return errors.HTTP(err, http.StatusBadRequest)
+			return errors.HTTP(http.StatusBadRequest, err)
 		}
 	default:
-		return errors.NewHTTP("content type not supported", http.StatusBadRequest)
+		return errors.NewHTTP(http.StatusBadRequest, "content type not supported")
 	}
 
 	return nil
