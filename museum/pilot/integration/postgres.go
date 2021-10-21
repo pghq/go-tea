@@ -54,7 +54,7 @@ func NewPostgres(m *testing.M) *Postgres{
 	p := Postgres{
 		run: m.Run,
 		exit: os.Exit,
-		emit: errors.Emit,
+		emit: errors.Send,
 	}
 
 	return &p
@@ -64,7 +64,7 @@ func NewPostgres(m *testing.M) *Postgres{
 func NewPostgresWithExit(t *testing.T, code int) *Postgres{
 	p := Postgres{
 		run: NoopRun,
-		emit: errors.Emit,
+		emit: errors.Send,
 		exit: ExpectExit(t, code),
 	}
 

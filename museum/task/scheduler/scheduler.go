@@ -147,7 +147,7 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 			cancel()
 			if err != nil {
 				if errors.IsFatal(err) {
-					errors.Emit(err)
+					errors.Send(err)
 				}
 
 				if s.notifyWorker != nil {
@@ -161,7 +161,7 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 				log.Infof("scheduler.worker.job: item=%s", msg.Id())
 				defer func() {
 					if err := msg.Ack(ctx); err != nil {
-						errors.Emit(err)
+						errors.Send(err)
 					}
 
 					if s.notifyWorker != nil {
@@ -171,7 +171,7 @@ func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
 
 				var task Task
 				if err := msg.Decode(&task); err != nil {
-					errors.Emit(err)
+					errors.Send(err)
 					return
 				}
 				job(&task)
@@ -222,7 +222,7 @@ func (s *Scheduler) start(ctx context.Context) {
 					defer cancel()
 
 					if err := s.queue.Enqueue(ctx, task.Id, task); err != nil {
-						errors.Emit(err)
+						errors.Send(err)
 						return
 					}
 

@@ -126,27 +126,27 @@ func StatusCode(err error) int {
 	return http.StatusInternalServerError
 }
 
-// Emit emits fatal errors to global log and monitor.
-func Emit(err error) {
+// Send emits fatal errors to global log and monitor.
+func Send(err error) {
 	if !IsFatal(err) {
 		return
 	}
 
 	l := log.CurrentLogger()
 	l.Error(err)
-	monitor.Emit(err)
+	monitor.Send(err)
 }
 
-// EmitHTTP replies to the request with an error
+// SendHTTP replies to the request with an error
 // and emits fatal http errors to global log and monitor.
-func EmitHTTP(w http.ResponseWriter, r *http.Request, err error) {
+func SendHTTP(w http.ResponseWriter, r *http.Request, err error) {
 	msg := err.Error()
 	status := StatusCode(err)
 	if IsFatal(err) {
 		m := CurrentMonitor()
 		l := log.CurrentLogger()
 		l.HTTPError(r, status, err)
-		m.EmitHTTP(r, err)
+		m.SendHTTP(r, err)
 		msg = http.StatusText(status)
 	}
 

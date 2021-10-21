@@ -43,7 +43,7 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 				Negative(m.negative)
 
 			if errors.IsFatal(err){
-				errors.EmitHTTP(resp, r, err)
+				errors.SendHTTP(resp, r, err)
 				return
 			}
 
