@@ -11,8 +11,8 @@ import (
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
-	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
+	"github.com/pghq/go-museum/museum/pilot"
 )
 
 func TestLRU_Insert(t *testing.T) {
@@ -143,7 +143,7 @@ func TestMiddleware_Handle(t *testing.T) {
 	t.Run("calls origin if no cache is present", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		m := NewMiddleware(nil)
-		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
+		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
 	})
 
 	t.Run("raises fatal errors", func(t *testing.T) {
@@ -166,7 +166,7 @@ func TestMiddleware_Handle(t *testing.T) {
 			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)
 
-		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
+		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
 		assert.Equal(t, "ok", w.Body.String())
 	})
@@ -177,7 +177,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)
-		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
+		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
 		assert.Contains(t, w.Body.String(), `"data":"ok"`)
 		assert.Contains(t, w.Body.String(), "cachedAt")

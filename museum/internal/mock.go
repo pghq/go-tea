@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"net/http"
 	"runtime"
 	"strings"
 	"sync"
@@ -10,9 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 )
-
-// NoopHandler is a http handler that does nothing.
-var NoopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
 
 type Mock struct {
 	expected map[string][]*Expect
