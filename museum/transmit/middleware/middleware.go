@@ -19,9 +19,14 @@ import "net/http"
 // modify request/response before or after the principal handler is called.
 // Each Middleware is responsible for calling the next middleware in
 // the chain (or not if continued execution is not desired)
-type Middleware func(http.Handler) http.Handler
+type Middleware interface {
+	Handle(http.Handler) http.Handler
+}
 
-// Handle creates an http handler from the middleware
-func (m Middleware) Handle(h http.Handler) http.Handler {
+// Func handles http middleware requests
+type Func func(http.Handler) http.Handler
+
+// Handle creates a http handler from the middleware
+func (m Func) Handle(h http.Handler) http.Handler {
 	return m(h)
 }

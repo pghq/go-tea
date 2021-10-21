@@ -11,7 +11,7 @@ import (
 
 func TestMiddleware_Handle(t *testing.T) {
 	t.Run("can create handler instance", func(t *testing.T) {
-		m := Middleware(func(h http.Handler) http.Handler {
+		m := Func(func(h http.Handler) http.Handler {
 			return internal.NoopHandler
 		})
 

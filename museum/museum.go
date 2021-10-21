@@ -77,7 +77,7 @@ func (a *App) Health() *health.Client {
 // Router provides a Router for serving http traffic.
 func (a *App) Router(origins ...string) *router.Router {
 	r := router.NewRouter(a.version.Segments()[0]).
-		Middleware(errors.NewMiddleware().Handle, cors.New(origins...).Handle).
+		Middleware(errors.NewMiddleware(), cors.New(origins...)).
 		Get("/health/status", a.Health().Handler().Status)
 
 	return r
