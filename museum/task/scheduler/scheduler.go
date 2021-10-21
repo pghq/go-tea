@@ -139,7 +139,7 @@ func (s *Scheduler) Add(tasks ...*Task) *Scheduler {
 
 // Worker creates a new worker for handling scheduled tasks.
 func (s *Scheduler) Worker(job func(task *Task)) *worker.Worker {
-	h := func(ctx context.Context, _ func()) {
+	h := func(ctx context.Context) {
 		log.Debug("scheduler.worker.job: started")
 		for {
 			dequeueCtx, cancel := context.WithTimeout(ctx, s.dequeueTimeout)

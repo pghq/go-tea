@@ -22,7 +22,7 @@ const (
 	DefaultContainerTTL = time.Minute
 
 	// DefaultMaxConnectTime is the default amount of time to allow connecting
-	DefaultMaxConnectTime = 30 * time.Second
+	DefaultMaxConnectTime = 60 * time.Second
 
 	// DefaultTag is the default tag for the postgres docker image
 	DefaultTag = "11"

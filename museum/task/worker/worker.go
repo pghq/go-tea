@@ -106,7 +106,7 @@ func (w *Worker) start(ctx context.Context, instance int) {
 					log.Debugf("worker: instance=%d, job=%d, started", instance, i)
 					ctx, cancel := context.WithTimeout(ctx, w.interval)
 					defer cancel()
-					job(ctx, w.Stop)
+					job(ctx)
 					log.Debugf("worker: instance=%d, job=%d, finished", instance, i)
 				}(i, job)
 			}
@@ -141,4 +141,4 @@ func New(jobs ...Job) *Worker {
 }
 
 // Job is a task to be executed.
-type Job func(ctx context.Context, stop func())
+type Job func(ctx context.Context)

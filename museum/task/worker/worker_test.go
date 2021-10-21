@@ -44,11 +44,10 @@ func TestWorker_Concurrent(t *testing.T) {
 func TestWorker_Start(t *testing.T) {
 	t.Run("can run", func(t *testing.T) {
 		done := make(chan struct{}, 2)
-		job := func(ctx context.Context, stop func()) {
+		job := func(ctx context.Context) {
 			select {
 			case done <- struct{}{}:
 			default:
-				stop()
 			}
 		}
 		w := New(job)
@@ -64,12 +63,11 @@ func TestWorker_Start(t *testing.T) {
 		}()
 
 		done := make(chan struct{}, 2)
-		job := func(ctx context.Context, stop func()) {
+		job := func(ctx context.Context) {
 			select {
 			case done <- struct{}{}:
 				panic("an error has occurred")
 			default:
-				stop()
 			}
 		}
 
@@ -81,8 +79,7 @@ func TestWorker_Start(t *testing.T) {
 
 	t.Run("handles cancelled jobs", func(t *testing.T) {
 		done := make(chan struct{}, 1)
-		job := func(ctx context.Context, stop func()) {
-			stop()
+		job := func(ctx context.Context) {
 			done <- struct{}{}
 		}
 
