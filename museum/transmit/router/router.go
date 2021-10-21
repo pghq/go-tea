@@ -34,7 +34,7 @@ const (
 
 // Router is an instance of a mux based Router
 type Router struct {
-	mux *mux.Router
+	mux   *mux.Router
 	cache *cache.LRU
 }
 
@@ -45,11 +45,11 @@ func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...Option) 
 		NegativeCacheTTL: DefaultNegativeCacheTTL,
 	}
 
-	for _, opt := range opts{
+	for _, opt := range opts {
 		opt.Apply(&conf)
 	}
 
-	if conf.PositiveCacheTTL != 0 || conf.NegativeCacheTTL != 0{
+	if conf.PositiveCacheTTL != 0 || conf.NegativeCacheTTL != 0 {
 		handlerFunc = cache.NewMiddleware(r.cache).Handle(handlerFunc).ServeHTTP
 	}
 

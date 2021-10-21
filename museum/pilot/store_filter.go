@@ -33,7 +33,7 @@ func (s *Store) Filter() store.Filter {
 // Filter is a mock store.Filter
 type Filter struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -213,7 +213,7 @@ func NewFilter(t *testing.T) *Filter {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		f.fail = t.Fatal
 	}
 

@@ -34,7 +34,7 @@ func (s *Store) Update() store.Update {
 // Update is a mock store.Update
 type Update struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -156,7 +156,7 @@ func NewUpdate(t *testing.T) *Update {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		u.fail = t.Fatal
 	}
 

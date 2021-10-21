@@ -34,7 +34,7 @@ func (s *Store) Add() store.Add {
 // Add is a mock store.Add
 type Add struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -156,7 +156,7 @@ func NewAdd(t *testing.T) *Add {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		a.fail = t.Fatal
 	}
 

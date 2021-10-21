@@ -18,7 +18,7 @@ var (
 // Store is a mock store.Client
 type Store struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -45,7 +45,7 @@ func NewDisconnectedStore(t *testing.T) *Store {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		s.fail = t.Fatal
 	}
 
@@ -74,7 +74,7 @@ func NewDisconnectedStoreWithFail(t *testing.T, expect ...interface{}) *Store {
 // Snapper is a mock store.Snapper
 type Snapper struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -101,7 +101,7 @@ func NewSnapper(t *testing.T) *Snapper {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		s.fail = t.Fatal
 	}
 
@@ -121,7 +121,7 @@ func NewSnapperWithFail(t *testing.T, expect ...interface{}) *Snapper {
 
 type Cursor struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -197,7 +197,7 @@ func NewCursor(t *testing.T) *Cursor {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		c.fail = t.Fatal
 	}
 

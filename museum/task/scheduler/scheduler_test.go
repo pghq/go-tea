@@ -16,7 +16,7 @@ import (
 	"github.com/pghq/go-museum/museum/internal"
 )
 
-func TestMain(m *testing.M){
+func TestMain(m *testing.M) {
 	log.Writer(io.Discard)
 	defer log.Reset()
 	code := m.Run()

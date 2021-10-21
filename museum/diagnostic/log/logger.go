@@ -88,7 +88,7 @@ func NewLogger() *Logger {
 }
 
 // Reset sets the global logger to default values
-func Reset(){
+func Reset() {
 	logger = NewLogger()
 }
 
