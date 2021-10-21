@@ -209,11 +209,11 @@ func NewPGXLogger() *PGXLogger {
 type GooseLogger struct{}
 
 func (g *GooseLogger) Fatal(v ...interface{}) {
-	errors.Send(errors.New(fmt.Sprint(v...)))
+	errors.Send(errors.New(v...))
 }
 
 func (g *GooseLogger) Fatalf(format string, v ...interface{}) {
-	errors.Send(errors.New(fmt.Sprintf(format, v...)))
+	errors.Send(errors.Newf(format, v...))
 }
 
 func (g *GooseLogger) Print(v ...interface{}) {

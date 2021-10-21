@@ -52,38 +52,43 @@ func Wrap(err error) error {
 }
 
 // New creates an internal error from an error message
-func New(msg string) error {
-	return Wrap(errors.New(msg))
+func New(v ...interface{}) error {
+	return Wrap(errors.New(fmt.Sprint(v...)))
+}
+
+// Newf creates an internal error from a formatted error message
+func Newf(format string, v ...interface{}) error {
+	return Wrap(errors.New(fmt.Sprintf(format, v...)))
 }
 
 // HTTP creates a http error
-func HTTP(err error, code int) error {
+func HTTP(code int, err error) error {
 	return runtimeError(err, code)
 }
 
 // NewHTTP creates a http error from a msg
-func NewHTTP(msg string, code int) error {
-	return HTTP(errors.New(msg), code)
+func NewHTTP(code int, v ...interface{}) error {
+	return HTTP(code, New(v...))
 }
 
 // BadRequest creates a bad request error
 func BadRequest(err error) error {
-	return HTTP(err, http.StatusBadRequest)
+	return HTTP(http.StatusBadRequest, err)
 }
 
 // NewBadRequest creates a bad request error from a msg
-func NewBadRequest(msg string) error {
-	return NewHTTP(msg, http.StatusBadRequest)
+func NewBadRequest(v ...interface{}) error {
+	return NewHTTP(http.StatusBadRequest, v...)
 }
 
 // NoContent creates a no content error
 func NoContent(err error) error {
-	return HTTP(err, http.StatusNoContent)
+	return HTTP(http.StatusNoContent, err)
 }
 
 // NewNoContent creates a no content error from a msg
-func NewNoContent(msg string) error {
-	return NewHTTP(msg, http.StatusNoContent)
+func NewNoContent(v ...interface{}) error {
+	return NewHTTP(http.StatusNoContent, v...)
 }
 
 // As finds first error in chain matching target.
