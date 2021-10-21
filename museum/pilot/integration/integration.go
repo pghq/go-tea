@@ -25,7 +25,7 @@ var (
 )
 
 // ExpectExit is a test function for asserting exit codes when exit is called
-func ExpectExit(t *testing.T, expect int) func(code int){
+func ExpectExit(t *testing.T, expect int) func(code int) {
 	return func(code int) {
 		assert.Equal(t, expect, code)
 	}

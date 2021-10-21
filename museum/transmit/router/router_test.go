@@ -227,7 +227,7 @@ type RequestBuilder struct {
 	path   string
 	method string
 	body   string
-	opts []Option
+	opts   []Option
 	router struct {
 		method string
 		path   string

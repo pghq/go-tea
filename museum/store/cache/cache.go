@@ -31,7 +31,7 @@ const (
 
 // Key encodes the key into a format consistent and compatible with the Cache.
 func Key(key interface{}) (string, error) {
-	if k, ok := key.(string); ok{
+	if k, ok := key.(string); ok {
 		return k, nil
 	}
 
@@ -47,10 +47,10 @@ func Key(key interface{}) (string, error) {
 
 // RequestKey encodes an http request to a key
 func RequestKey(r *http.Request) string {
-	var key struct{
+	var key struct {
 		Method string
 		Header http.Header
-		Url string
+		Url    string
 	}
 
 	key.Method = r.Method

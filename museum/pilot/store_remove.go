@@ -34,7 +34,7 @@ func (s *Store) Remove() store.Remove {
 // Remove is a mock store.Remove
 type Remove struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -190,7 +190,7 @@ func NewRemove(t *testing.T) *Remove {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		r.fail = t.Fatal
 	}
 

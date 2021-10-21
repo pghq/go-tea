@@ -179,7 +179,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		})).ServeHTTP(w, r)
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
-		assert.Contains(t,  w.Body.String(), `"data":"ok"`)
-		assert.Contains(t,  w.Body.String(), "cachedAt")
+		assert.Contains(t, w.Body.String(), `"data":"ok"`)
+		assert.Contains(t, w.Body.String(), "cachedAt")
 	})
 }

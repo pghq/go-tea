@@ -38,21 +38,21 @@ type Postgres struct {
 		FS        fs.FS
 		Directory string
 	}
-	ImageTag     string
-	ContainerTTL time.Duration
+	ImageTag       string
+	ContainerTTL   time.Duration
 	MaxConnectTime time.Duration
 	DockerEndpoint string
 
-	exit func(code int)
-	run func() int
+	exit  func(code int)
+	run   func() int
 	purge func(r *dockertest.Resource) error
-	emit func(err error)
+	emit  func(err error)
 }
 
 // NewPostgres creates a new integration test for postgres
-func NewPostgres(m *testing.M) *Postgres{
+func NewPostgres(m *testing.M) *Postgres {
 	p := Postgres{
-		run: m.Run,
+		run:  m.Run,
 		exit: os.Exit,
 		emit: errors.Send,
 	}
@@ -61,9 +61,9 @@ func NewPostgres(m *testing.M) *Postgres{
 }
 
 // NewPostgresWithExit creates a new postgres image with an expected exit
-func NewPostgresWithExit(t *testing.T, code int) *Postgres{
+func NewPostgresWithExit(t *testing.T, code int) *Postgres {
 	p := Postgres{
-		run: NoopRun,
+		run:  NoopRun,
 		emit: errors.Send,
 		exit: ExpectExit(t, code),
 	}
@@ -85,7 +85,7 @@ func RunPostgres(integration *Postgres) {
 		integration.MaxConnectTime = DefaultMaxConnectTime
 	}
 
-	if integration.DockerEndpoint == ""{
+	if integration.DockerEndpoint == "" {
 		integration.DockerEndpoint = DefaultDockerEndpoint
 	}
 
@@ -139,7 +139,7 @@ func RunPostgres(integration *Postgres) {
 	}
 
 	purge := pool.Purge
-	if integration.purge != nil{
+	if integration.purge != nil {
 		purge = func(r *dockertest.Resource) error {
 			_ = pool.Purge(r)
 			return integration.purge(resource)

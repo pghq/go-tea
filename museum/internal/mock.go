@@ -80,7 +80,9 @@ func (m *Mock) Call(t *testing.T, args ...interface{}) []interface{} {
 		for i, arg := range expect.input {
 			if _, ok := arg.(context.Context); ok {
 				assert.Implements(t, (*context.Context)(nil), args[i])
-			} else if _, ok := arg.(interface{Call(t *testing.T, args ...interface{}) []interface{}}); ok{
+			} else if _, ok := arg.(interface {
+				Call(t *testing.T, args ...interface{}) []interface{}
+			}); ok {
 				assert.IsType(t, arg, args[i])
 			} else {
 				assert.Equal(t, arg, args[i])

@@ -34,7 +34,7 @@ func (s *Store) Query() store.Query {
 // Query is a mock store.Query
 type Query struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -241,7 +241,7 @@ func NewQuery(t *testing.T) *Query {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		q.fail = t.Fatal
 	}
 

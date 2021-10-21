@@ -43,7 +43,7 @@ func (s *Store) Transaction(ctx context.Context) (store.Transaction, error) {
 // Transaction is a mock store.Transaction
 type Transaction struct {
 	internal.Mock
-	t *testing.T
+	t    *testing.T
 	fail func(v ...interface{})
 }
 
@@ -119,7 +119,7 @@ func NewTransaction(t *testing.T) *Transaction {
 		t: t,
 	}
 
-	if t != nil{
+	if t != nil {
 		tx.fail = t.Fatal
 	}
 

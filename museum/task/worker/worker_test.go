@@ -12,7 +12,7 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
 
-func TestMain(m *testing.M){
+func TestMain(m *testing.M) {
 	log.Writer(io.Discard)
 	code := m.Run()
 	os.Exit(code)
