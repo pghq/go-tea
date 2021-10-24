@@ -20,8 +20,8 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/pghq/go-museum/museum/store/cache"
-	"github.com/pghq/go-museum/museum/transmit/middleware"
+	"github.com/pghq/go-museum/museum/transmit"
+	"github.com/pghq/go-museum/museum/transmit/cache"
 )
 
 const (
@@ -95,7 +95,7 @@ func (r *Router) At(path string) *Router {
 }
 
 // Middleware adds a handler to execute before/after the principle request handler
-func (r *Router) Middleware(middlewares ...middleware.Middleware) *Router {
+func (r *Router) Middleware(middlewares ...transmit.Middleware) *Router {
 	for _, m := range middlewares {
 		r.mux.Use(m.Handle)
 	}
