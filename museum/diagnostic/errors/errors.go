@@ -43,6 +43,14 @@ func (e *applicationError) Format(s fmt.State, verb rune) {
 
 // Wrap creates an internal error
 func Wrap(err error) error {
+	if errors.Is(err, context.Canceled) {
+		return runtimeError(err, http.StatusBadRequest)
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return runtimeError(err, http.StatusRequestTimeout)
+	}
+
 	if ae, ok := err.(*applicationError); ok {
 		return runtimeError(err, ae.code)
 	}
@@ -107,16 +115,16 @@ func IsFatal(err error) bool {
 
 // StatusCode gets an HTTP error code from an error
 func StatusCode(err error) int {
-	if e, ok := err.(*applicationError); ok {
-		return e.code
-	}
-
 	if errors.Is(err, context.Canceled) {
 		return http.StatusBadRequest
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		return http.StatusRequestTimeout
+	}
+
+	if e, ok := err.(*applicationError); ok {
+		return e.code
 	}
 
 	return http.StatusInternalServerError
