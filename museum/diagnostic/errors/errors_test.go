@@ -142,13 +142,16 @@ func TestStatusCode(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		assert.Equal(t, http.StatusBadRequest, StatusCode(ctx.Err()))
+		assert.Equal(t, http.StatusBadRequest, StatusCode(Wrap(ctx.Err())))
 	})
 
 	t.Run("detects status code for deadline exceeded errors", func(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Nanosecond)
 		defer cancel()
+
 		time.Sleep(time.Microsecond)
 		assert.Equal(t, http.StatusRequestTimeout, StatusCode(ctx.Err()))
+		assert.Equal(t, http.StatusRequestTimeout, StatusCode(Wrap(ctx.Err())))
 	})
 
 	t.Run("detects status code for internal errors", func(t *testing.T) {
