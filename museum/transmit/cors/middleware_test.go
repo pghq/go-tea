@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/pilot"
+	"github.com/pghq/go-museum/museum/internal"
 )
 
 func TestNew(t *testing.T) {
@@ -32,7 +32,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		r := httptest.NewRequest("OPTIONS", "/tests", nil)
 
 		w := httptest.NewRecorder()
-		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 
 		assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
 		assert.Empty(t, w.Header().Get("Access-Control-Allow-Headers"))
@@ -48,7 +48,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		r.Header.Set("Access-Control-Request-Headers", "Content-Type")
 
 		w := httptest.NewRecorder()
-		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 
 		assert.Empty(t, w.Header().Get("Access-Control-Allow-Origin"))
 		assert.Empty(t, w.Header().Get("Access-Control-Allow-Headers"))
@@ -64,7 +64,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		r.Header.Set("Access-Control-Request-Headers", "Content-Type")
 
 		w := httptest.NewRecorder()
-		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 
 		assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
 		assert.Equal(t, "Content-Type", w.Header().Get("Access-Control-Allow-Headers"))
@@ -82,7 +82,7 @@ func TestMiddleware_Handle(t *testing.T) {
 		r.Header.Set("Access-Control-Request-Headers", "Content-Type")
 
 		w := httptest.NewRecorder()
-		m.Handle(pilot.NoopHandler).ServeHTTP(w, r)
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 
 		assert.Equal(t, "https://test.site.tld", w.Header().Get("Access-Control-Allow-Origin"))
 		assert.Equal(t, "Content-Type", w.Header().Get("Access-Control-Allow-Headers"))

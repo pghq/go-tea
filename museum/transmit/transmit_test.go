@@ -1,4 +1,4 @@
-package middleware
+package transmit
 
 import (
 	"net/http"
@@ -6,13 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/pilot"
+	"github.com/pghq/go-museum/museum/internal"
 )
 
 func TestMiddleware_Handle(t *testing.T) {
 	t.Run("can create handler instance", func(t *testing.T) {
-		m := Func(func(h http.Handler) http.Handler {
-			return pilot.NoopHandler
+		m := MiddlewareFunc(func(h http.Handler) http.Handler {
+			return internal.NoopHandler
 		})
 
 		assert.NotNil(t, m)

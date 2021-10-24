@@ -22,7 +22,7 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/health"
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
-	"github.com/pghq/go-museum/museum/transmit/middleware/cors"
+	"github.com/pghq/go-museum/museum/transmit/cors"
 	"github.com/pghq/go-museum/museum/transmit/router"
 )
 

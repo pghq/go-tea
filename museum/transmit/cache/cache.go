@@ -69,7 +69,7 @@ type Item struct {
 	ttl      time.Duration
 }
 
-// CachedAt gets the time the item was added to the cace
+// CachedAt gets the time the item was added to the cache
 func (i *Item) CachedAt() time.Time {
 	return i.cachedAt
 }
