@@ -36,15 +36,14 @@ const (
 	maxQueryLimit = 100
 )
 
-// Decode is a method to decode a http request into a value
+// DecodeBody is a method to decode a http request body into a value
 // JSON and schema struct tags are supported
-func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
-	rd := CurrentDecoder()
-	if err := rd.Decode(r, v); err != nil {
-		return errors.HTTP(http.StatusBadRequest, err)
+func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
+	if v == nil{
+		return errors.New("value must be defined")
 	}
 
-	if r.Body == http.NoBody {
+	if r.Body == http.NoBody{
 		return nil
 	}
 
@@ -65,6 +64,21 @@ func Decode(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		}
 	default:
 		return errors.NewHTTP(http.StatusBadRequest, "content type not supported")
+	}
+
+	return nil
+}
+
+// Decode is a method to decode a http request query and path into a value
+// schema struct tags are supported
+func Decode(r *http.Request, v interface{}) error {
+	if v == nil{
+		return errors.New("value must be defined")
+	}
+
+	rd := CurrentDecoder()
+	if err := rd.Decode(r, v); err != nil {
+		return errors.HTTP(http.StatusBadRequest, err)
 	}
 
 	return nil

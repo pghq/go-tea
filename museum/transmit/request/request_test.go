@@ -14,13 +14,25 @@ import (
 )
 
 func TestDecode(t *testing.T) {
+	t.Run("raises nil query errors", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/tests", nil)
+		err := Decode(req, nil)
+		assert.Equal(t, http.StatusInternalServerError, errors.StatusCode(err))
+	})
+
+	t.Run("raises nil body errors", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/tests", nil)
+		err := DecodeBody(httptest.NewRecorder(), req, nil)
+		assert.Equal(t, http.StatusInternalServerError, errors.StatusCode(err))
+	})
+
 	t.Run("raises bad query errors", func(t *testing.T) {
 		var query struct {
 			First int `json:"first"`
 		}
 
 		req := httptest.NewRequest("GET", "/tests?first=three", nil)
-		err := Decode(httptest.NewRecorder(), req, &query)
+		err := Decode(req, &query)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
@@ -31,20 +43,20 @@ func TestDecode(t *testing.T) {
 
 		req := httptest.NewRequest("GET", "/tests/:test", nil)
 		req = mux.SetURLVars(req, map[string]string{"test": "one"})
-		err := Decode(httptest.NewRecorder(), req, &query)
+		err := Decode(req, &query)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
 	t.Run("can send no content", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		err := Decode(httptest.NewRecorder(), req, &struct{}{})
+		err := DecodeBody(httptest.NewRecorder(), req, &struct{}{})
 		assert.Nil(t, err)
 	})
 
 	t.Run("raises bad request body errors", func(t *testing.T) {
 		body := iotest.ErrReader(errors.New("an error has occurred"))
 		req := httptest.NewRequest("POST", "/tests", body)
-		err := Decode(httptest.NewRecorder(), req, &struct{}{})
+		err := DecodeBody(httptest.NewRecorder(), req, &struct{}{})
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
@@ -55,7 +67,7 @@ func TestDecode(t *testing.T) {
 		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
-		err := Decode(httptest.NewRecorder(), req, &value)
+		err := DecodeBody(httptest.NewRecorder(), req, &value)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
@@ -66,11 +78,11 @@ func TestDecode(t *testing.T) {
 		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/bson")
-		err := Decode(httptest.NewRecorder(), req, &value)
+		err := DecodeBody(httptest.NewRecorder(), req, &value)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
-	t.Run("can send", func(t *testing.T) {
+	t.Run("can decode body", func(t *testing.T) {
 		body := bytes.NewReader([]byte(`{
 			"data": "test"
 		}`))
@@ -79,8 +91,20 @@ func TestDecode(t *testing.T) {
 		}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
-		err := Decode(httptest.NewRecorder(), req, &value)
+		err := DecodeBody(httptest.NewRecorder(), req, &value)
 		assert.Nil(t, err)
+		assert.Equal(t, "test", value.Data)
+	})
+
+	t.Run("can decode query", func(t *testing.T) {
+		var query struct {
+			Data string `json:"data"`
+		}
+		req := httptest.NewRequest("GET", "/tests?data=test", nil)
+		req.Header.Set("Content-Type", "application/json")
+		err := Decode(req, &query)
+		assert.Nil(t, err)
+		assert.Equal(t, "test", query.Data)
 	})
 }
 
