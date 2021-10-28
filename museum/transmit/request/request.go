@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 )
@@ -39,11 +40,11 @@ const (
 // DecodeBody is a method to decode a http request body into a value
 // JSON and schema struct tags are supported
 func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
-	if v == nil{
+	if v == nil {
 		return errors.New("value must be defined")
 	}
 
-	if r.Body == http.NoBody{
+	if r.Body == http.NoBody {
 		return nil
 	}
 
@@ -72,7 +73,7 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 // Decode is a method to decode a http request query and path into a value
 // schema struct tags are supported
 func Decode(r *http.Request, v interface{}) error {
-	if v == nil{
+	if v == nil {
 		return errors.New("value must be defined")
 	}
 
@@ -96,6 +97,21 @@ func Authorization(r *http.Request) (string, string) {
 	return auth[0], auth[1]
 }
 
+// Page gets the first and after queries for pagination
+func Page(r *http.Request) (int, *time.Time, error) {
+	first, err := First(r)
+	if err != nil {
+		return 0, nil, errors.Wrap(err)
+	}
+
+	after, err := After(r)
+	if err != nil {
+		return 0, nil, errors.Wrap(err)
+	}
+
+	return first, after, nil
+}
+
 // First gets the first query for pagination
 func First(r *http.Request) (int, error) {
 	if f := r.URL.Query().Get("first"); f != "" {
@@ -115,17 +131,22 @@ func First(r *http.Request) (int, error) {
 }
 
 // After gets the after query for pagination
-func After(r *http.Request) (string, error) {
+func After(r *http.Request) (*time.Time, error) {
 	if a := r.URL.Query().Get("after"); a != "" {
-		after, err := base64.StdEncoding.DecodeString(a)
+		ds, err := base64.StdEncoding.DecodeString(a)
 		if err != nil {
-			return "", errors.BadRequest(err)
+			return nil, errors.BadRequest(err)
 		}
 
-		return string(after), nil
+		after, err := time.Parse(time.RFC3339Nano, string(ds))
+		if err != nil {
+			return nil, errors.BadRequest(err)
+		}
+
+		return &after, nil
 	}
 
-	return "", nil
+	return &time.Time{}, nil
 
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pghq/go-museum/museum/transmit"
+	"github.com/pghq/go-museum/museum/transmit/cache"
 )
 
 func TestNewRouter(t *testing.T) {
@@ -26,7 +27,7 @@ func TestRouter_Get(t *testing.T) {
 		r := NewRouter(0)
 		req := NewRequest(t).
 			Method("GET").
-			Options(CacheFor(time.Second, time.Second)).
+			CacheOptions(cache.PositiveFor(time.Second)).
 			Path("/v0/tests").
 			ExpectRoute("/tests").
 			ExpectResponse("ok")
@@ -193,7 +194,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 
 	switch strings.ToUpper(b.ExpectedMethod()) {
 	case "GET":
-		r = r.Get(b.ExpectedRoute(), handlerFunc, b.opts...)
+		r = r.Get(b.ExpectedRoute(), handlerFunc, b.cacheOpts...)
 	case "PUT":
 		r = r.Put(b.ExpectedRoute(), handlerFunc)
 	case "POST":
@@ -223,12 +224,12 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 }
 
 type RequestBuilder struct {
-	t      *testing.T
-	path   string
-	method string
-	body   string
-	opts   []Option
-	router struct {
+	t         *testing.T
+	path      string
+	method    string
+	body      string
+	cacheOpts []cache.Option
+	router    struct {
 		method string
 		path   string
 	}
@@ -253,8 +254,8 @@ func (b *RequestBuilder) Path(path string) *RequestBuilder {
 	return b
 }
 
-func (b *RequestBuilder) Options(opts ...Option) *RequestBuilder {
-	b.opts = opts
+func (b *RequestBuilder) CacheOptions(opts ...cache.Option) *RequestBuilder {
+	b.cacheOpts = opts
 
 	return b
 }

@@ -19,14 +19,21 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 )
 
 const (
-	// DefaultCacheSize is the default size of the Cache
-	DefaultCacheSize int = 1024
+	// DefaultSize is the default size of the Cache
+	DefaultSize int = 1024
+
+	// DefaultPositiveTTL is the default positive cache time
+	DefaultPositiveTTL = 1 * time.Second
+
+	// DefaultNegativeTTL is the default negative cache time
+	DefaultNegativeTTL = 15 * time.Second
 )
 
 // Key encodes the key into a format consistent and compatible with the Cache.
@@ -46,16 +53,28 @@ func Key(key interface{}) (string, error) {
 }
 
 // RequestKey encodes an http request to a key
-func RequestKey(r *http.Request) string {
+func RequestKey(r *http.Request, queries ...string) string {
 	var key struct {
 		Method string
 		Header http.Header
-		Url    string
+		Scheme string
+		Host   string
+		Values url.Values
 	}
 
 	key.Method = r.Method
 	key.Header = r.Header
-	key.Url = r.URL.String()
+	key.Scheme = r.URL.Scheme
+	key.Host = r.URL.Host
+	key.Values = r.URL.Query()
+
+	if len(queries) != 0 {
+		value := make(url.Values)
+		for _, query := range queries {
+			value[query] = key.Values[query]
+		}
+		key.Values = value
+	}
 
 	k, _ := Key(key)
 
@@ -77,4 +96,60 @@ func (i *Item) CachedAt() time.Time {
 // Value gets the raw object
 func (i *Item) Value() interface{} {
 	return i.value
+}
+
+// Config for router
+type Config struct {
+	PositiveTTL time.Duration
+	NegativeTTL time.Duration
+	Queries     []string
+}
+
+// Option for router
+type Option interface {
+	Apply(conf *Config)
+}
+
+// cacheOption is an option for caching for get requests.
+type cacheOption struct {
+	positive time.Duration
+	negative time.Duration
+	queries  []string
+}
+
+func (o cacheOption) Apply(conf *Config) {
+	if conf != nil {
+		if o.negative != 0 {
+			conf.NegativeTTL = o.negative
+		}
+
+		if o.positive != 0 {
+			conf.PositiveTTL = o.positive
+		}
+
+		if len(o.queries) > 0 {
+			conf.Queries = o.queries
+		}
+	}
+}
+
+// PositiveFor creates a new router option for positive ttl for caching.
+func PositiveFor(ttl time.Duration) Option {
+	return cacheOption{
+		positive: ttl,
+	}
+}
+
+// NegativeFor creates a new router option for negative ttl for caching.
+func NegativeFor(ttl time.Duration) Option {
+	return cacheOption{
+		negative: ttl,
+	}
+}
+
+// Use creates a new router option for which queries are used for cache key.
+func Use(queries ...string) Option {
+	return cacheOption{
+		queries: queries,
+	}
 }
