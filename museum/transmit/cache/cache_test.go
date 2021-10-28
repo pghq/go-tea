@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,7 @@ import (
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
+	"github.com/pghq/go-museum/museum/transmit/response"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -127,17 +129,23 @@ func TestItem_Value(t *testing.T) {
 
 func TestMiddleware_Handle(t *testing.T) {
 	c := NewLRU()
-	r := httptest.NewRequest("GET", "/tests", nil)
+	r := httptest.NewRequest("GET", "/tests?name=foo", nil)
 
 	t.Run("can create instance", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		res := NewCachedResponse(c, RequestKey(r), w).Positive(time.Second).Negative(time.Second)
+		res := NewResponseWatcher(c, &Config{
+			PositiveTTL: time.Second,
+			NegativeTTL: time.Second,
+		}, w, RequestKey(r, "name"))
 		assert.NotNil(t, res)
 
-		m := NewMiddleware(c).Positive(time.Second).Negative(time.Second)
+		opts := []Option{
+			PositiveFor(time.Second),
+			NegativeFor(time.Second),
+		}
+		m := NewMiddleware(c).With(opts...)
 		assert.NotNil(t, m)
-		assert.Equal(t, time.Second, m.positive)
-		assert.Equal(t, time.Second, m.negative)
+		assert.Equal(t, opts, m.opts)
 	})
 
 	t.Run("calls origin if no cache is present", func(t *testing.T) {
@@ -153,10 +161,17 @@ func TestMiddleware_Handle(t *testing.T) {
 		m := NewMiddleware(c)
 		c.lru.Add(RequestKey(r), "test")
 		defer c.lru.Remove(RequestKey(r))
-		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("bad request"))
-		})).ServeHTTP(w, r)
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
+	})
+
+	t.Run("raises cached response errors", func(t *testing.T) {
+		log.Writer(io.Discard)
+		defer log.Reset()
+		w := httptest.NewRecorder()
+		m := NewMiddleware(c)
+		_ = c.Insert(RequestKey(r), "test", time.Minute)
+		defer c.lru.Remove(RequestKey(r))
+		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 	})
 
 	t.Run("sends response", func(t *testing.T) {
@@ -165,21 +180,31 @@ func TestMiddleware_Handle(t *testing.T) {
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)
-
-		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
 		assert.Equal(t, "ok", w.Body.String())
 	})
 
 	t.Run("caches response", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/tests?name=bar&cachebuster=1892312938", nil)
 		w := httptest.NewRecorder()
-		m := NewMiddleware(c).Positive(time.Minute)
+		m := NewMiddleware(c).With(NegativeFor(time.Minute), PositiveFor(time.Minute), Use("name"))
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_, _ = w.Write([]byte("ok"))
+			response.Send(w, r, response.New("ok"))
 		})).ServeHTTP(w, r)
+
+		r = httptest.NewRequest("GET", "/tests?name=bar&cachebuster=123y19238y", nil)
+		w = httptest.NewRecorder()
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 		assert.Equal(t, 200, w.Code)
-		assert.Contains(t, w.Body.String(), `"data":"ok"`)
-		assert.Contains(t, w.Body.String(), "cachedAt")
+
+		var resp struct {
+			Data     string `json:"data"`
+			CachedAt string `json:"cachedAt"`
+		}
+
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
+		assert.Equal(t, resp.Data, "ok")
+		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+		assert.NotEmpty(t, resp.CachedAt)
 	})
 }

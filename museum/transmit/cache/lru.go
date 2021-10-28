@@ -90,6 +90,6 @@ func (c *LRU) setClock(clock internal.Clock) *LRU {
 // NewLRU constructs a new lru Cache instance.
 func NewLRU() *LRU {
 	// we know at this point the Cache size is positive
-	c, _ := lru.New(DefaultCacheSize)
+	c, _ := lru.New(DefaultSize)
 	return &LRU{lru: c, clock: clock.New(time.Now())}
 }

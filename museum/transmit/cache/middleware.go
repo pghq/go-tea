@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -10,20 +11,13 @@ import (
 
 // Middleware is a middleware for caching responses
 type Middleware struct {
-	cache    *LRU
-	positive time.Duration
-	negative time.Duration
+	cache *LRU
+	opts  []Option
 }
 
-// Positive sets the positive ttl for cached responses
-func (m *Middleware) Positive(ttl time.Duration) *Middleware {
-	m.positive = ttl
-	return m
-}
-
-// Negative sets the negative ttl for cached responses
-func (m *Middleware) Negative(ttl time.Duration) *Middleware {
-	m.negative = ttl
+// With sets new cache options for the middleware
+func (m *Middleware) With(opts ...Option) *Middleware {
+	m.opts = append(m.opts, opts...)
 	return m
 }
 
@@ -35,23 +29,35 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 			return
 		}
 
-		key := RequestKey(r)
+		conf := Config{
+			PositiveTTL: DefaultPositiveTTL,
+			NegativeTTL: DefaultNegativeTTL,
+		}
+
+		for _, opt := range m.opts {
+			opt.Apply(&conf)
+		}
+
+		key := RequestKey(r, conf.Queries...)
 		i, err := m.cache.Get(key)
 		if err != nil {
-			resp := NewCachedResponse(m.cache, key, w).
-				Positive(m.positive).
-				Negative(m.negative)
-
+			w := NewResponseWatcher(m.cache, &conf, w, key)
 			if errors.IsFatal(err) {
-				errors.SendHTTP(resp, r, err)
+				errors.SendHTTP(w, r, err)
 				return
 			}
 
-			next.ServeHTTP(resp, r)
+			next.ServeHTTP(w, r)
 			return
 		}
 
-		response.Send(w, r, response.New(i.Value()).Cached(i.CachedAt()))
+		resp, err := NewCachedResponse(i)
+		if err != nil {
+			errors.SendHTTP(w, r, err)
+			return
+		}
+
+		response.Send(w, r, resp)
 	})
 }
 
@@ -64,51 +70,87 @@ func NewMiddleware(cache *LRU) *Middleware {
 	return m
 }
 
-// CachedResponse is a cached instance of the http.ResponseWriter
-type CachedResponse struct {
-	key      string
+// ResponseWatcher is a cached instance of the http.ResponseWriter
+type ResponseWatcher struct {
 	status   int
+	key      string
 	cache    *LRU
 	positive time.Duration
 	negative time.Duration
-	http.ResponseWriter
+	w        http.ResponseWriter
 }
 
-// Positive sets the positive ttl for cached responses
-func (r *CachedResponse) Positive(ttl time.Duration) *CachedResponse {
-	r.positive = ttl
-	return r
-}
-
-// Negative sets the negative ttl for cached responses
-func (r *CachedResponse) Negative(ttl time.Duration) *CachedResponse {
-	r.negative = ttl
-	return r
-}
-
-func (r *CachedResponse) WriteHeader(statusCode int) {
+func (r *ResponseWatcher) WriteHeader(statusCode int) {
 	r.status = statusCode
-	r.ResponseWriter.WriteHeader(statusCode)
+	r.w.WriteHeader(statusCode)
 }
 
-func (r *CachedResponse) Write(data []byte) (int, error) {
+func (r *ResponseWatcher) Header() http.Header {
+	return r.w.Header()
+}
+
+func (r *ResponseWatcher) Write(data []byte) (int, error) {
 	ttl := r.positive
 	if r.status >= http.StatusBadRequest {
 		ttl = r.negative
 	}
 
-	_ = r.cache.Insert(r.key, string(data), ttl)
+	var v struct {
+		Data   []byte
+		Header http.Header
+		Status int
+	}
 
-	return r.ResponseWriter.Write(data)
+	v.Data = data
+	v.Header = r.Header()
+	v.Status = r.status
+
+	_ = r.cache.Insert(r.key, v, ttl)
+
+	return r.w.Write(data)
 }
 
-// NewCachedResponse creates a new cached response
-func NewCachedResponse(cache *LRU, key string, w http.ResponseWriter) *CachedResponse {
-	r := CachedResponse{
-		key:            key,
-		cache:          cache,
-		ResponseWriter: w,
+// NewResponseWatcher creates a new cached response watcher
+func NewResponseWatcher(cache *LRU, conf *Config, w http.ResponseWriter, key string) *ResponseWatcher {
+	r := ResponseWatcher{
+		status: http.StatusOK,
+		key:    key,
+		cache:  cache,
+		w:      w,
+	}
+
+	if conf != nil {
+		r.positive = conf.PositiveTTL
+		r.negative = conf.NegativeTTL
 	}
 
 	return &r
+}
+
+// NewCachedResponse creates a new response.Builder from the cache item
+func NewCachedResponse(i *Item) (*response.Builder, error) {
+	v, ok := i.Value().(struct {
+		Data   []byte
+		Header http.Header
+		Status int
+	})
+
+	if !ok {
+		return nil, errors.New("unexpected cache value")
+	}
+
+	var r struct {
+		Data     interface{} `json:"data"`
+		CachedAt *time.Time  `json:"cachedAt,omitempty"`
+		Cursor   string      `json:"cursor,omitempty"`
+	}
+
+	if err := json.Unmarshal(v.Data, &r); err == nil {
+		if r.Data != nil {
+			r.CachedAt = &i.cachedAt
+			v.Data, _ = json.Marshal(&r)
+		}
+	}
+
+	return response.NewRaw(v.Header, v.Status, v.Data), nil
 }

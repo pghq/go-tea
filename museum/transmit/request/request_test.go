@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"testing/iotest"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -125,50 +126,48 @@ func TestAuthorization(t *testing.T) {
 	})
 }
 
-func TestFirst(t *testing.T) {
+func TestPage(t *testing.T) {
 	t.Run("raises not a number errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests?first=zero", nil)
-		_, err := First(req)
+		_, _, err := Page(req)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
 	t.Run("raises too many results errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests?first=500", nil)
-		_, err := First(req)
+		_, _, err := Page(req)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
 	t.Run("can detect first query", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests?first=5", nil)
-		first, err := First(req)
+		first, _, err := Page(req)
 		assert.Nil(t, err)
 		assert.Equal(t, 5, first)
 	})
 
-	t.Run("uses default if not present", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/tests", nil)
-		_, err := First(req)
-		assert.Nil(t, err)
-	})
-}
-
-func TestAfter(t *testing.T) {
-	t.Run("raises decode errors", func(t *testing.T) {
+	t.Run("raises base64 errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests?after=museum", nil)
-		_, err := After(req)
+		_, _, err := Page(req)
+		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
+	})
+
+	t.Run("raises time errors", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/tests?after=MjAwNi0wMS0wMg==", nil)
+		_, _, err := Page(req)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
 	t.Run("can decode paginated queries", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/tests?after=bXVzZXVt", nil)
-		after, err := After(req)
+		req := httptest.NewRequest("GET", "/tests?after=MjAwNi0wMS0wMlQxNTowNDowNS45OTk5OS0wNTowMA==", nil)
+		_, after, err := Page(req)
 		assert.Nil(t, err)
-		assert.Equal(t, "museum", after)
+		assert.Equal(t, "2006-01-02T15:04:05.99999-05:00", after.Format(time.RFC3339Nano))
 	})
 
 	t.Run("uses default if not present", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		_, err := After(req)
+		_, _, err := Page(req)
 		assert.Nil(t, err)
 	})
 }

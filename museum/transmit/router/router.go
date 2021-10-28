@@ -16,20 +16,11 @@ package router
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/mux"
 
 	"github.com/pghq/go-museum/museum/transmit"
 	"github.com/pghq/go-museum/museum/transmit/cache"
-)
-
-const (
-	// DefaultPositiveCacheTTL is the default positive cache time
-	DefaultPositiveCacheTTL = 1 * time.Second
-
-	// DefaultNegativeCacheTTL is the default negative cache time
-	DefaultNegativeCacheTTL = 15 * time.Second
 )
 
 // Router is an instance of a mux based Router
@@ -39,18 +30,12 @@ type Router struct {
 }
 
 // Get adds a handler for the path using the GET http method
-func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...Option) *Router {
-	conf := Config{
-		PositiveCacheTTL: DefaultPositiveCacheTTL,
-		NegativeCacheTTL: DefaultNegativeCacheTTL,
-	}
-
-	for _, opt := range opts {
-		opt.Apply(&conf)
-	}
-
-	if conf.PositiveCacheTTL != 0 || conf.NegativeCacheTTL != 0 {
-		handlerFunc = cache.NewMiddleware(r.cache).Handle(handlerFunc).ServeHTTP
+func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...cache.Option) *Router {
+	if len(opts) > 0 {
+		handlerFunc = cache.NewMiddleware(r.cache).
+			With(opts...).
+			Handle(handlerFunc).
+			ServeHTTP
 	}
 
 	r.mux.HandleFunc(path, handlerFunc).
@@ -133,36 +118,4 @@ func NotFoundHandler(w http.ResponseWriter, _ *http.Request) {
 func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, _ = w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
-}
-
-// Config for router
-type Config struct {
-	PositiveCacheTTL time.Duration
-	NegativeCacheTTL time.Duration
-}
-
-// Option for router
-type Option interface {
-	Apply(conf *Config)
-}
-
-// cacheOption is an option for caching for get requests.
-type cacheOption struct {
-	positive time.Duration
-	negative time.Duration
-}
-
-func (o cacheOption) Apply(conf *Config) {
-	if conf != nil {
-		conf.PositiveCacheTTL = o.positive
-		conf.NegativeCacheTTL = o.negative
-	}
-}
-
-// CacheFor creates a new router option for caching.
-func CacheFor(positive, negative time.Duration) Option {
-	return cacheOption{
-		positive: positive,
-		negative: negative,
-	}
 }
