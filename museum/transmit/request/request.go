@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,7 +28,7 @@ import (
 )
 
 const (
-	// maxUploadSize is the max http body size that can be sent to the app
+	// maxUploadSize is the max http body size that can be sent to the app (~16 MB)
 	maxUploadSize = 16 << 20
 
 	// defaultQueryLimit is the default query limit.
@@ -50,7 +51,7 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return errors.HTTP(http.StatusBadRequest, err)
+		return errors.BadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -61,13 +62,45 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return errors.HTTP(http.StatusBadRequest, err)
+			return errors.BadRequest(err)
 		}
 	default:
-		return errors.NewHTTP(http.StatusBadRequest, "content type not supported")
+		return errors.NewBadRequest("content type not supported")
 	}
 
 	return nil
+}
+
+// MultipartPart reads a multipart by name from a http request and leaves the body intact
+func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
+	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
+	if err != nil {
+		return nil, errors.BadRequest(err)
+	}
+
+	_ = r.Body.Close()
+	body := ioutil.NopCloser(bytes.NewBuffer(b))
+	defer func() {
+		r.Body = body
+		r.MultipartForm = nil
+	}()
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+
+	reader, err := r.MultipartReader()
+	if err != nil {
+		return nil, errors.BadRequest(err)
+	}
+
+	for {
+		part, err := reader.NextPart()
+		if err != nil {
+			return nil, errors.BadRequest(err)
+		}
+
+		if part.FormName() == name {
+			return part, nil
+		}
+	}
 }
 
 // Decode is a method to decode a http request query and path into a value
@@ -79,7 +112,7 @@ func Decode(r *http.Request, v interface{}) error {
 
 	rd := CurrentDecoder()
 	if err := rd.Decode(r, v); err != nil {
-		return errors.HTTP(http.StatusBadRequest, err)
+		return errors.BadRequest(err)
 	}
 
 	return nil

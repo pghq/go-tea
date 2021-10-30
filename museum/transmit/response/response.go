@@ -31,7 +31,7 @@ func Send(w http.ResponseWriter, r *http.Request, body *Builder) {
 	}
 
 	if !request.Accepts(r, "application/json") {
-		errors.SendHTTP(w, r, errors.BadRequest(errors.New("unsupported MIME type")))
+		errors.SendHTTP(w, r, errors.NewBadRequest("unsupported MIME type"))
 		return
 	}
 
