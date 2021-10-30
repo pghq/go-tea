@@ -2,8 +2,11 @@ package request
 
 import (
 	"bytes"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/iotest"
 	"time"
@@ -21,7 +24,7 @@ func TestDecode(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, errors.StatusCode(err))
 	})
 
-	t.Run("raises nil body errors", func(t *testing.T) {
+	t.Run("raises nil value errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		err := DecodeBody(httptest.NewRecorder(), req, nil)
 		assert.Equal(t, http.StatusInternalServerError, errors.StatusCode(err))
@@ -62,9 +65,9 @@ func TestDecode(t *testing.T) {
 	})
 
 	t.Run("raises JSON errors", func(t *testing.T) {
-		body := bytes.NewReader([]byte(`{
+		body := strings.NewReader(`{
 			"data": "test",
-		}`))
+		}`)
 		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
@@ -73,9 +76,9 @@ func TestDecode(t *testing.T) {
 	})
 
 	t.Run("raises content type error", func(t *testing.T) {
-		body := bytes.NewReader([]byte(`{
+		body := strings.NewReader(`{
 			"data": "test"
-		}`))
+		}`)
 		value := struct{}{}
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/bson")
@@ -84,9 +87,9 @@ func TestDecode(t *testing.T) {
 	})
 
 	t.Run("can decode body", func(t *testing.T) {
-		body := bytes.NewReader([]byte(`{
+		body := strings.NewReader(`{
 			"data": "test"
-		}`))
+		}`)
 		var value struct {
 			Data string `json:"data"`
 		}
@@ -106,6 +109,66 @@ func TestDecode(t *testing.T) {
 		err := Decode(req, &query)
 		assert.Nil(t, err)
 		assert.Equal(t, "test", query.Data)
+	})
+}
+
+func TestMultipartPart(t *testing.T) {
+	t.Run("raises bad request body errors", func(t *testing.T) {
+		body := iotest.ErrReader(errors.New("an error has occurred"))
+		req := httptest.NewRequest("POST", "/tests", body)
+		_, err := MultipartPart(httptest.NewRecorder(), req, "test")
+		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
+	})
+
+	t.Run("raises content type errors", func(t *testing.T) {
+		body := strings.NewReader(`{
+			"data": "test"
+		}`)
+		req := httptest.NewRequest("POST", "/tests", body)
+		_, err := MultipartPart(httptest.NewRecorder(), req, "test")
+		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
+	})
+
+	t.Run("raises not found errors", func(t *testing.T) {
+		body := new(bytes.Buffer)
+		mw := multipart.NewWriter(body)
+		mw.WriteField("foo", "test")
+		mw.WriteField("bar", "test")
+		mw.Close()
+
+		req := httptest.NewRequest("POST", "/tests", body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		_, err := MultipartPart(httptest.NewRecorder(), req, "file")
+		assert.NotNil(t, err)
+	})
+
+	// https://stackoverflow.com/questions/4238809/example-of-multipart-form-data
+	t.Run("can get part", func(t *testing.T) {
+		body := new(bytes.Buffer)
+		mw := multipart.NewWriter(body)
+		mw.WriteField("foo", "test")
+		mw.WriteField("bar", "test")
+		mp, _ := mw.CreateFormFile("file", "file.csv")
+		mp.Write([]byte(`example`))
+		mw.Close()
+
+		req := httptest.NewRequest("POST", "/tests", body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+		part, err := MultipartPart(httptest.NewRecorder(), req, "file")
+		defer part.Close()
+		assert.Nil(t, err)
+		assert.NotNil(t, part)
+		assert.Equal(t, "file.csv", part.FileName())
+		assert.Equal(t, "application/octet-stream", part.Header.Get("Content-Type"))
+		data, _ := io.ReadAll(part)
+		assert.Equal(t, "example", string(data))
+
+		part, err = MultipartPart(httptest.NewRecorder(), req, "foo")
+		defer part.Close()
+		assert.Nil(t, err)
+		assert.NotNil(t, part)
+		data, _ = io.ReadAll(part)
+		assert.Equal(t, "test", string(data))
 	})
 }
 
