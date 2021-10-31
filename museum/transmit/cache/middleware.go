@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -51,13 +50,13 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 			return
 		}
 
-		resp, err := NewCachedResponse(i)
+		resp, err := NewCachedResponse(w, r, i)
 		if err != nil {
 			errors.SendHTTP(w, r, err)
 			return
 		}
 
-		response.Send(w, r, resp)
+		resp.Send()
 	})
 }
 
@@ -128,7 +127,7 @@ func NewResponseWatcher(cache *LRU, conf *Config, w http.ResponseWriter, key str
 }
 
 // NewCachedResponse creates a new response.Builder from the cache item
-func NewCachedResponse(i *Item) (*response.Builder, error) {
+func NewCachedResponse(w http.ResponseWriter, req *http.Request, i *Item) (*response.Response, error) {
 	v, ok := i.Value().(struct {
 		Data   []byte
 		Header http.Header
@@ -139,18 +138,11 @@ func NewCachedResponse(i *Item) (*response.Builder, error) {
 		return nil, errors.New("unexpected cache value")
 	}
 
-	var r struct {
-		Data     interface{} `json:"data"`
-		CachedAt *time.Time  `json:"cachedAt,omitempty"`
-		Cursor   string      `json:"cursor,omitempty"`
-	}
+	r := response.New(w, req).
+		Header(v.Header).
+		Status(v.Status).
+		Body(v.Data).
+		Cached(i.CachedAt())
 
-	if err := json.Unmarshal(v.Data, &r); err == nil {
-		if r.Data != nil {
-			r.CachedAt = &i.cachedAt
-			v.Data, _ = json.Marshal(&r)
-		}
-	}
-
-	return response.NewRaw(v.Header, v.Status, v.Data), nil
+	return r, nil
 }

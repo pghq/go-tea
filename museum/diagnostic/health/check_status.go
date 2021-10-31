@@ -42,5 +42,5 @@ func (s *CheckService) Status() *StatusResponse {
 // Status is the corresponding HTTP handler for the status API
 func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	status := h.client.Checks.Status()
-	response.Send(w, r, response.New(status))
+	response.New(w, r).Body(status).Send()
 }

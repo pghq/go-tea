@@ -1,20 +1,18 @@
 package cache
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pghq/go-museum/museum/diagnostic/errors"
 	"github.com/pghq/go-museum/museum/diagnostic/log"
 	"github.com/pghq/go-museum/museum/internal"
 	"github.com/pghq/go-museum/museum/internal/clock"
-	"github.com/pghq/go-museum/museum/transmit/response"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLRU_Insert(t *testing.T) {
@@ -189,22 +187,16 @@ func TestMiddleware_Handle(t *testing.T) {
 		w := httptest.NewRecorder()
 		m := NewMiddleware(c).With(NegativeFor(time.Minute), PositiveFor(time.Minute), Use("name"))
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			response.Send(w, r, response.New("ok"))
+			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)
 
 		r = httptest.NewRequest("GET", "/tests?name=bar&cachebuster=123y19238y", nil)
 		w = httptest.NewRecorder()
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
+
 		assert.Equal(t, 200, w.Code)
-
-		var resp struct {
-			Data     string `json:"data"`
-			CachedAt string `json:"cachedAt"`
-		}
-
-		_ = json.Unmarshal(w.Body.Bytes(), &resp)
-		assert.Equal(t, resp.Data, "ok")
-		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-		assert.NotEmpty(t, resp.CachedAt)
+		assert.Equal(t, "ok", w.Body.String())
+		assert.Equal(t, "text/plain; charset=utf-8", w.Header().Get("Content-Type"))
+		assert.NotEmpty(t, w.Header().Get("Cached-At"))
 	})
 }
