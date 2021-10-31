@@ -22,6 +22,7 @@ type Decoder struct {
 func (d *Decoder) Decode(r *http.Request, v interface{}) error {
 	d.schema.IgnoreUnknownKeys(true)
 	d.schema.ZeroEmpty(true)
+	d.schema.SetAliasTag("json")
 
 	// Query parameters and path parameters get decoded
 	if err := d.schema.Decode(v, r.URL.Query()); err != nil {

@@ -103,9 +103,9 @@ func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multip
 	}
 }
 
-// Decode is a method to decode a http request query and path into a value
+// DecodeURL is a method to decode a http request query and path into a value
 // schema struct tags are supported
-func Decode(r *http.Request, v interface{}) error {
+func DecodeURL(r *http.Request, v interface{}) error {
 	if v == nil {
 		return errors.New("value must be defined")
 	}
