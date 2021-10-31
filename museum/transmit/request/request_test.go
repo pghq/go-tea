@@ -20,7 +20,7 @@ import (
 func TestDecode(t *testing.T) {
 	t.Run("raises nil query errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		err := Decode(req, nil)
+		err := DecodeURL(req, nil)
 		assert.Equal(t, http.StatusInternalServerError, errors.StatusCode(err))
 	})
 
@@ -36,7 +36,7 @@ func TestDecode(t *testing.T) {
 		}
 
 		req := httptest.NewRequest("GET", "/tests?first=three", nil)
-		err := Decode(req, &query)
+		err := DecodeURL(req, &query)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
@@ -47,7 +47,7 @@ func TestDecode(t *testing.T) {
 
 		req := httptest.NewRequest("GET", "/tests/:test", nil)
 		req = mux.SetURLVars(req, map[string]string{"test": "one"})
-		err := Decode(req, &query)
+		err := DecodeURL(req, &query)
 		assert.Equal(t, http.StatusBadRequest, errors.StatusCode(err))
 	})
 
@@ -102,13 +102,13 @@ func TestDecode(t *testing.T) {
 
 	t.Run("can decode query", func(t *testing.T) {
 		var query struct {
-			Data string `json:"data"`
+			QueryData string `json:"data"`
 		}
 		req := httptest.NewRequest("GET", "/tests?data=test", nil)
 		req.Header.Set("Content-Type", "application/json")
-		err := Decode(req, &query)
+		err := DecodeURL(req, &query)
 		assert.Nil(t, err)
-		assert.Equal(t, "test", query.Data)
+		assert.Equal(t, "test", query.QueryData)
 	})
 }
 
