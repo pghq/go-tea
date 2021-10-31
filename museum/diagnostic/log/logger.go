@@ -121,5 +121,8 @@ func Reset() {
 
 // CurrentLogger returns an instance of the global Logger.
 func CurrentLogger() *Logger {
+	logger.lock.RLock()
+	defer logger.lock.RUnlock()
+
 	return logger
 }
