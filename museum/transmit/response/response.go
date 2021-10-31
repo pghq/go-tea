@@ -26,8 +26,6 @@ import (
 
 // Response is the http response
 type Response struct {
-	w http.ResponseWriter
-	req *http.Request
 	header http.Header
 	body interface{}
 	status int
@@ -36,20 +34,20 @@ type Response struct {
 }
 
 // Send sends an HTTP response based on content type and body
-func (r *Response) Send(){
+func (r *Response) Send(w http.ResponseWriter, req *http.Request){
 	if r == nil || r.body == nil {
-		r.w.WriteHeader(http.StatusNoContent)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	headers := r.w.Header()
-	for k, v := range r.Headers() {
+	headers := w.Header()
+	for k, v := range r.Headers(w, req) {
 		headers[k] = v
 	}
 
-	bytes, ct, err := r.Bytes()
+	bytes, ct, err := r.Bytes(req)
 	if err != nil{
-		errors.SendHTTP(r.w, r.req, err)
+		errors.SendHTTP(w, req, err)
 		return
 	}
 
@@ -57,8 +55,8 @@ func (r *Response) Send(){
 		headers.Set("Content-Type", ct)
 	}
 
-	r.w.WriteHeader(r.status)
-	_, _ = r.w.Write(bytes)
+	w.WriteHeader(r.status)
+	_, _ = w.Write(bytes)
 }
 
 // Body sets the response body
@@ -96,15 +94,15 @@ func (r *Response) Header(header http.Header) *Response {
 }
 
 // Headers gets the http response headers
-func (r *Response) Headers() http.Header {
-	header := r.w.Header().Clone()
+func (r *Response) Headers(w http.ResponseWriter, req *http.Request) http.Header {
+	header := w.Header().Clone()
 	for k, v := range r.header {
 		header[k] = v
 	}
 
 	if r.cursor != nil && !r.cursor.IsZero() {
 		ds := r.cursor.Format(time.RFC3339Nano)
-		link := *r.req.URL
+		link := req.URL
 		query := link.Query()
 		query.Set("after", base64.StdEncoding.EncodeToString([]byte(ds)))
 		link.RawQuery = query.Encode()
@@ -119,8 +117,8 @@ func (r *Response) Headers() http.Header {
 }
 
 // Bytes gets the response as bytes based on origin
-func (r *Response) Bytes() ([]byte, string, error){
-	if request.Accepts(r.req, "*/*"){
+func (r *Response) Bytes(req *http.Request) ([]byte, string, error){
+	if request.Accepts(req, "*/*"){
 		if body, ok := r.body.([]byte); ok{
 			return body, "", nil
 		}
@@ -131,7 +129,7 @@ func (r *Response) Bytes() ([]byte, string, error){
 	}
 
 	switch {
-	case request.Accepts(r.req, "application/json"):
+	case request.Accepts(req, "application/json"):
 		bytes, err := json.Marshal(r.body)
 		if err != nil {
 			return nil, "", errors.Wrap(err)
@@ -144,10 +142,8 @@ func (r *Response) Bytes() ([]byte, string, error){
 }
 
 // New creates a new response to be sent
-func New(w http.ResponseWriter, req *http.Request) *Response {
+func New() *Response {
 	r := Response{
-		w: w,
-		req: req,
 		status: http.StatusOK,
 	}
 

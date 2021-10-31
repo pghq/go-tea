@@ -50,13 +50,13 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 			return
 		}
 
-		resp, err := NewCachedResponse(w, r, i)
+		resp, err := NewCachedResponse(i)
 		if err != nil {
 			errors.SendHTTP(w, r, err)
 			return
 		}
 
-		resp.Send()
+		resp.Send(w, r)
 	})
 }
 
@@ -127,7 +127,7 @@ func NewResponseWatcher(cache *LRU, conf *Config, w http.ResponseWriter, key str
 }
 
 // NewCachedResponse creates a new response.Builder from the cache item
-func NewCachedResponse(w http.ResponseWriter, req *http.Request, i *Item) (*response.Response, error) {
+func NewCachedResponse(i *Item) (*response.Response, error) {
 	v, ok := i.Value().(struct {
 		Data   []byte
 		Header http.Header
@@ -138,7 +138,7 @@ func NewCachedResponse(w http.ResponseWriter, req *http.Request, i *Item) (*resp
 		return nil, errors.New("unexpected cache value")
 	}
 
-	r := response.New(w, req).
+	r := response.New().
 		Header(v.Header).
 		Status(v.Status).
 		Body(v.Data).
