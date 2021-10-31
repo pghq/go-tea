@@ -76,17 +76,15 @@ func TestHandler_Status(t *testing.T) {
 		h.Status(res, req)
 		assert.Equal(t, http.StatusOK, res.Code)
 		body := fmt.Sprintf(`{
-			"data": {
-				"version": "0.0.1", 
-				"status": "healthy", 
-				"checks": {
-					"uptime": [{
-						"time": "%s",
-						"status": "healthy",
-						"observedValue": %d,
-						"observedUnit": "s"
-					}]
-				}
+			"version": "0.0.1", 
+			"status": "healthy", 
+			"checks": {
+				"uptime": [{
+					"time": "%s",
+					"status": "healthy",
+					"observedValue": %d,
+					"observedUnit": "s"
+				}]
 			}
 		}`,
 			now.Format(time.RFC3339Nano),

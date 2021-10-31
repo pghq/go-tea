@@ -112,6 +112,10 @@ func NewLogger() *Logger {
 
 // Reset sets the global logger to default values
 func Reset() {
+	l := CurrentLogger()
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	logger = NewLogger()
 }
 

@@ -1,7 +1,6 @@
 package response
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +15,7 @@ import (
 func TestSend(t *testing.T) {
 	t.Run("sends no content response", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		Send(w, nil, nil)
+		New(w, nil).Send()
 		assert.Equal(t, http.StatusNoContent, w.Code)
 	})
 
@@ -25,7 +24,7 @@ func TestSend(t *testing.T) {
 		defer log.Reset()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
-		Send(w, req, New(func() {}))
+		New(w, req).Body(func() {}).Send()
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
@@ -33,7 +32,7 @@ func TestSend(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Accept", "application/js")
-		Send(w, req, New("test"))
+		New(w, req).Body("test").Send()
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
@@ -42,24 +41,26 @@ func TestSend(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		now := time.Now()
 		cursor, _ := time.Parse(time.RFC3339Nano, "2006-01-02T15:04:05.99999-05:00")
-		builder := New("test").Cached(now).Cursor(&cursor)
-		Send(w, req, builder)
+		New(w, req).Body("test").Cached(now).Cursor(&cursor).Status(205).Send()
+		assert.Equal(t, 205, w.Code)
+		assert.Equal(t, now.Format(time.RFC3339Nano), w.Header().Get("Cached-At"))
+		assert.Equal(t, "</tests?after=MjAwNi0wMS0wMlQxNTowNDowNS45OTk5OS0wNTowMA%3D%3D>", w.Header().Get("Link"))
+		assert.Equal(t, "test", w.Body.String())
+	})
+
+	t.Run("can send json", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/tests", nil)
+		req.Header.Set("Content-Type", "application/json")
+		New(w, req).Body(map[string]interface{}{"key": "value"}).Send()
 		assert.Equal(t, http.StatusOK, w.Code)
-		body := fmt.Sprintf(`{
-				"data": "test",
-				"cachedAt":"%s",
-				"cursor":"MjAwNi0wMS0wMlQxNTowNDowNS45OTk5OS0wNTowMA=="
-			}`,
-			now.Format(time.RFC3339Nano),
-		)
-		assert.JSONEq(t, body, w.Body.String())
+		assert.JSONEq(t, `{"key": "value"}`, w.Body.String())
 	})
 
 	t.Run("can send raw", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
-		builder := NewRaw(http.Header{"key": []string{"value"}}, 200, []byte("ok"))
-		Send(w, req, builder)
+		New(w, req).Body([]byte("ok")).Header(http.Header{"key": []string{"value"}}).Send()
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, "ok", w.Body.String())
 		assert.Equal(t, http.Header{"key": []string{"value"}}, w.Header())
@@ -68,7 +69,7 @@ func TestSend(t *testing.T) {
 
 func TestBuilder_Cached(t *testing.T) {
 	t.Run("can mark response as cached", func(t *testing.T) {
-		builder := New("test")
+		builder := New(nil, nil)
 		now := time.Now()
 		builder = builder.Cached(now)
 		assert.NotNil(t, builder)
@@ -78,7 +79,7 @@ func TestBuilder_Cached(t *testing.T) {
 
 func TestBuilder_Cursor(t *testing.T) {
 	t.Run("can set value", func(t *testing.T) {
-		builder := New("test")
+		builder := New(nil, nil)
 		now := time.Now()
 		builder = builder.Cursor(&now)
 		assert.NotNil(t, builder)
@@ -88,7 +89,7 @@ func TestBuilder_Cursor(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		builder := New("test")
+		builder := New(nil, nil)
 		assert.NotNil(t, builder)
 	})
 }

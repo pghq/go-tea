@@ -16,6 +16,7 @@ package response
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -23,105 +24,132 @@ import (
 	"github.com/pghq/go-museum/museum/transmit/request"
 )
 
-// Send sends an HTTP response based on content type and body
-func Send(w http.ResponseWriter, r *http.Request, body *Builder) {
-	if body == nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	if !request.Accepts(r, "application/json") {
-		errors.SendHTTP(w, r, errors.NewBadRequest("unsupported MIME type"))
-		return
-	}
-
-	if body.IsRaw() {
-		header := w.Header()
-		for k, v := range body.raw.header {
-			header[k] = v
-		}
-		w.WriteHeader(body.raw.status)
-		_, _ = w.Write(body.raw.data)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(body.Response()); err != nil {
-		errors.SendHTTP(w, r, err)
-		return
-	}
-}
-
-// Builder is an instance of a response builder
-type Builder struct {
-	data interface{}
-	raw  struct {
-		data   []byte
-		header http.Header
-		status int
-	}
+// Response is the http response
+type Response struct {
+	w http.ResponseWriter
+	req *http.Request
+	header http.Header
+	body interface{}
+	status int
 	cachedAt time.Time
 	cursor   *time.Time
 }
 
-// Cached adds a cache time to the response
-func (b *Builder) Cached(at time.Time) *Builder {
-	b.cachedAt = at
+// Send sends an HTTP response based on content type and body
+func (r *Response) Send(){
+	if r == nil || r.body == nil {
+		r.w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
-	return b
+	headers := r.w.Header()
+	for k, v := range r.Headers() {
+		headers[k] = v
+	}
+
+	bytes, ct, err := r.Bytes()
+	if err != nil{
+		errors.SendHTTP(r.w, r.req, err)
+		return
+	}
+
+	if ct != ""{
+		headers.Set("Content-Type", ct)
+	}
+
+	r.w.WriteHeader(r.status)
+	_, _ = r.w.Write(bytes)
+}
+
+// Body sets the response body
+func (r *Response) Body(body interface{}) *Response{
+	r.body = body
+	return r
+}
+
+// Status sets the http status code
+func (r *Response) Status(code int) *Response {
+	r.status = code
+
+	return r
+}
+
+// Cached adds a cache time to the response
+func (r *Response) Cached(at time.Time) *Response {
+	r.cachedAt = at
+
+	return r
 }
 
 // Cursor adds a cursor to the response
-func (b *Builder) Cursor(cursor *time.Time) *Builder {
-	b.cursor = cursor
+func (r *Response) Cursor(cursor *time.Time) *Response {
+	r.cursor = cursor
 
-	return b
+	return r
 }
 
-// Response is the body to be sent
-func (b *Builder) Response() interface{} {
-	var r struct {
-		Data     interface{} `json:"data"`
-		CachedAt *time.Time  `json:"cachedAt,omitempty"`
-		Cursor   string      `json:"cursor,omitempty"`
-	}
+// Header sets http response headers
+func (r *Response) Header(header http.Header) *Response {
+	r.header = header
 
-	r.Data = b.data
-	if b.cursor != nil && !b.cursor.IsZero() {
-		ds := b.cursor.Format(time.RFC3339Nano)
-		r.Cursor = base64.StdEncoding.EncodeToString([]byte(ds))
-	}
-
-	if !b.cachedAt.IsZero() {
-		r.CachedAt = &b.cachedAt
-	}
-
-	return &r
+	return r
 }
 
-// IsRaw checks if the response is raw
-func (b *Builder) IsRaw() bool {
-	return len(b.raw.data) > 0
+// Headers gets the http response headers
+func (r *Response) Headers() http.Header {
+	header := r.w.Header().Clone()
+	for k, v := range r.header {
+		header[k] = v
+	}
+
+	if r.cursor != nil && !r.cursor.IsZero() {
+		ds := r.cursor.Format(time.RFC3339Nano)
+		link := *r.req.URL
+		query := link.Query()
+		query.Set("after", base64.StdEncoding.EncodeToString([]byte(ds)))
+		link.RawQuery = query.Encode()
+		header.Add("Link", fmt.Sprintf("<%s>", link.String()))
+	}
+
+	if !r.cachedAt.IsZero() {
+		header.Add("Cached-At", r.cachedAt.Format(time.RFC3339Nano))
+	}
+
+	return header
+}
+
+// Bytes gets the response as bytes based on origin
+func (r *Response) Bytes() ([]byte, string, error){
+	if request.Accepts(r.req, "*/*"){
+		if body, ok := r.body.([]byte); ok{
+			return body, "", nil
+		}
+
+		if body, ok := r.body.(string); ok{
+			return []byte(body), "", nil
+		}
+	}
+
+	switch {
+	case request.Accepts(r.req, "application/json"):
+		bytes, err := json.Marshal(r.body)
+		if err != nil {
+			return nil, "", errors.Wrap(err)
+		}
+
+		return bytes, "application/json", nil
+	}
+
+	return nil, "", errors.NewBadRequest("unsupported content type")
 }
 
 // New creates a new response to be sent
-func New(data interface{}) *Builder {
-	b := Builder{
-		data: data,
+func New(w http.ResponseWriter, req *http.Request) *Response {
+	r := Response{
+		w: w,
+		req: req,
+		status: http.StatusOK,
 	}
 
-	b.raw.status = http.StatusOK
-	return &b
-}
-
-// NewRaw creates a new raw response to be sent
-func NewRaw(header http.Header, status int, data []byte) *Builder {
-	b := Builder{
-		data: data,
-	}
-
-	b.raw.data = data
-	b.raw.header = header
-	b.raw.status = status
-	return &b
+	return &r
 }

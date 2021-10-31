@@ -186,16 +186,15 @@ func After(r *http.Request) (*time.Time, error) {
 // Accepts checks whether the response type is accepted
 func Accepts(r *http.Request, contentType string) bool {
 	accept := r.Header.Get("Accept")
-
 	if accept == "" {
 		return true
 	}
 
-	if strings.Contains(accept, contentType) {
+	if strings.Contains(accept, "*/*") {
 		return true
 	}
 
-	if strings.Contains(accept, "*/*") {
+	if strings.Contains(accept, contentType) {
 		return true
 	}
 
