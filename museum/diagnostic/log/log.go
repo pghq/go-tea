@@ -88,5 +88,5 @@ func Reset() {
 	defer lock.Unlock()
 
 	l := CurrentLogger()
-	l.Writer(NewLogger().w)
+	l.w = NewLogger().w
 }
