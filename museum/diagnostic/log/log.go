@@ -16,22 +16,35 @@ package log
 import (
 	"fmt"
 	"io"
+	"sync"
 )
+
+// lock provides safe concurrent access for the global logger
+var lock sync.RWMutex
 
 // Writer sets the Writer for the global Logger
 func Writer(w io.Writer) {
+	lock.Lock()
+	defer lock.Unlock()
+
 	l := CurrentLogger()
 	l.Writer(w)
 }
 
 // Level sets the default log level for the global Logger
 func Level(level string) {
+	lock.Lock()
+	defer lock.Unlock()
+
 	l := CurrentLogger()
 	l.Level(level)
 }
 
 // Debug sends a debug level message
 func Debug(v ...interface{}) *Logger {
+	lock.RLock()
+	defer lock.RUnlock()
+
 	l := CurrentLogger()
 	return l.Debug(fmt.Sprint(v...))
 }
@@ -43,6 +56,9 @@ func Debugf(format string, args ...interface{}) *Logger {
 
 // Info sends an info level message
 func Info(v ...interface{}) *Logger {
+	lock.RLock()
+	defer lock.RUnlock()
+
 	l := CurrentLogger()
 	return l.Info(fmt.Sprint(v...))
 }
@@ -54,6 +70,9 @@ func Infof(format string, args ...interface{}) *Logger {
 
 // Warn sends a warning level message
 func Warn(v ...interface{}) *Logger {
+	lock.RLock()
+	defer lock.RUnlock()
+
 	l := CurrentLogger()
 	return l.Warn(fmt.Sprint(v...))
 }
@@ -61,4 +80,13 @@ func Warn(v ...interface{}) *Logger {
 // Warnf sends a formatted warning level message
 func Warnf(format string, args ...interface{}) *Logger {
 	return Warn(fmt.Sprintf(format, args...))
+}
+
+// Reset sets the global logger to default values
+func Reset() {
+	lock.Lock()
+	defer lock.Unlock()
+
+	l := CurrentLogger()
+	l.Writer(NewLogger().w)
 }
