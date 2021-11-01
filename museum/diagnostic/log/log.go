@@ -20,7 +20,7 @@ import (
 )
 
 // lock provides safe concurrent access for the global logger
-var lock sync.RWMutex
+var lock sync.Mutex
 
 // Writer sets the Writer for the global Logger
 func Writer(w io.Writer) {
@@ -42,8 +42,8 @@ func Level(level string) {
 
 // Debug sends a debug level message
 func Debug(v ...interface{}) *Logger {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 
 	l := CurrentLogger()
 	return l.Debug(fmt.Sprint(v...))
@@ -56,8 +56,8 @@ func Debugf(format string, args ...interface{}) *Logger {
 
 // Info sends an info level message
 func Info(v ...interface{}) *Logger {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 
 	l := CurrentLogger()
 	return l.Info(fmt.Sprint(v...))
@@ -70,8 +70,8 @@ func Infof(format string, args ...interface{}) *Logger {
 
 // Warn sends a warning level message
 func Warn(v ...interface{}) *Logger {
-	lock.RLock()
-	defer lock.RUnlock()
+	lock.Lock()
+	defer lock.Unlock()
 
 	l := CurrentLogger()
 	return l.Warn(fmt.Sprint(v...))
