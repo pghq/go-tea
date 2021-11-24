@@ -16,7 +16,7 @@ package health
 import (
 	"time"
 
-	"github.com/pghq/go-museum/museum/internal"
+	"github.com/pghq/go-tea/internal"
 )
 
 const (
@@ -42,24 +42,14 @@ type Client struct {
 	Checks *CheckService
 }
 
-// Handler creates a new http handler for the health check client
-func (c *Client) Handler() *Handler {
-	return &Handler{client: c}
-}
-
-// Handler is a http handler for the health client
-type Handler struct {
-	client *Client
-}
-
 // service is a shared service for all health services
 type service struct {
 	clock   internal.Clock
 	version string
 }
 
-// New creates a new health client instance
-func New(version string, clock internal.Clock) *Client {
+// NewClient creates a new health client instance
+func NewClient(version string, clock internal.Clock) *Client {
 	c := &Client{}
 
 	c.common.version = version

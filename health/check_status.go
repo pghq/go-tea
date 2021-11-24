@@ -1,11 +1,5 @@
 package health
 
-import (
-	"net/http"
-
-	"github.com/pghq/go-museum/museum/transmit/response"
-)
-
 const (
 	// UptimeCheckKey is the key for the uptime health measurement
 	UptimeCheckKey = "uptime"
@@ -37,10 +31,4 @@ func (s *CheckService) Status() *StatusResponse {
 	status.WithCheck(UptimeCheckKey, s.Uptime())
 
 	return &status
-}
-
-// Status is the corresponding HTTP handler for the status API
-func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
-	status := h.client.Checks.Status()
-	response.New().Body(status).Send(w, r)
 }

@@ -1,4 +1,4 @@
-package cache
+package tea
 
 import (
 	"io"
@@ -9,10 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/diagnostic/log"
-	"github.com/pghq/go-museum/museum/internal"
-	"github.com/pghq/go-museum/museum/internal/clock"
+	"github.com/pghq/go-tea/internal"
+	"github.com/pghq/go-tea/internal/clock"
 )
 
 func TestLRU_Insert(t *testing.T) {
@@ -61,16 +59,16 @@ func TestGet(t *testing.T) {
 		c := NewLRU()
 		_, err := c.Get("item")
 		assert.NotNil(t, err)
-		assert.False(t, errors.IsFatal(err))
+		assert.False(t, IsFatal(err))
 	})
 
 	t.Run("raises casting errors", func(t *testing.T) {
 		c := NewLRU()
-		key, _ := Key("item")
+		key, _ := CacheKey("item")
 		c.lru.Add(key, "test")
 		_, err := c.Get("item")
 		assert.NotNil(t, err)
-		assert.True(t, errors.IsFatal(err))
+		assert.True(t, IsFatal(err))
 	})
 
 	t.Run("raises expiration errors", func(t *testing.T) {
@@ -79,7 +77,7 @@ func TestGet(t *testing.T) {
 		time.Sleep(time.Nanosecond)
 		_, err := c.Get("item")
 		assert.NotNil(t, err)
-		assert.False(t, errors.IsFatal(err))
+		assert.False(t, IsFatal(err))
 	})
 
 	t.Run("can retrieve values", func(t *testing.T) {
@@ -125,56 +123,56 @@ func TestItem_Value(t *testing.T) {
 	})
 }
 
-func TestMiddleware_Handle(t *testing.T) {
+func TestCacheMiddleware_Handle(t *testing.T) {
 	c := NewLRU()
 	r := httptest.NewRequest("GET", "/tests?name=foo", nil)
 
 	t.Run("can create instance", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		res := NewResponseWatcher(c, &Config{
+		res := NewCacheResponseWatcher(c, &CacheConfig{
 			PositiveTTL: time.Second,
 			NegativeTTL: time.Second,
-		}, w, RequestKey(r, "name"))
+		}, w, CacheRequestKey(r, "name"))
 		assert.NotNil(t, res)
 
-		opts := []Option{
-			PositiveFor(time.Second),
-			NegativeFor(time.Second),
+		opts := []CacheOption{
+			PositiveCacheFor(time.Second),
+			NegativeCacheFor(time.Second),
 		}
-		m := NewMiddleware(c).With(opts...)
+		m := NewCacheMiddleware(c).With(opts...)
 		assert.NotNil(t, m)
 		assert.Equal(t, opts, m.opts)
 	})
 
 	t.Run("calls origin if no cache is present", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		m := NewMiddleware(nil)
+		m := NewCacheMiddleware(nil)
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 	})
 
 	t.Run("raises fatal errors", func(t *testing.T) {
-		log.Writer(io.Discard)
-		defer log.Reset()
+		LogWriter(io.Discard)
+		defer ResetLog()
 		w := httptest.NewRecorder()
-		m := NewMiddleware(c)
-		c.lru.Add(RequestKey(r), "test")
-		defer c.lru.Remove(RequestKey(r))
+		m := NewCacheMiddleware(c)
+		c.lru.Add(CacheRequestKey(r), "test")
+		defer c.lru.Remove(CacheRequestKey(r))
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 	})
 
 	t.Run("raises cached response errors", func(t *testing.T) {
-		log.Writer(io.Discard)
-		defer log.Reset()
+		LogWriter(io.Discard)
+		defer ResetLog()
 		w := httptest.NewRecorder()
-		m := NewMiddleware(c)
-		_ = c.Insert(RequestKey(r), "test", time.Minute)
-		defer c.lru.Remove(RequestKey(r))
+		m := NewCacheMiddleware(c)
+		_ = c.Insert(CacheRequestKey(r), "test", time.Minute)
+		defer c.lru.Remove(CacheRequestKey(r))
 		m.Handle(internal.NoopHandler).ServeHTTP(w, r)
 	})
 
 	t.Run("sends response", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		m := NewMiddleware(c)
+		m := NewCacheMiddleware(c)
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)
@@ -185,7 +183,7 @@ func TestMiddleware_Handle(t *testing.T) {
 	t.Run("caches response", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/tests?name=bar&cachebuster=1892312938", nil)
 		w := httptest.NewRecorder()
-		m := NewMiddleware(c).With(NegativeFor(time.Minute), PositiveFor(time.Minute), Use("name"))
+		m := NewCacheMiddleware(c).With(NegativeCacheFor(time.Minute), PositiveCacheFor(time.Minute), UseCacheQuery("name"))
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte("ok"))
 		})).ServeHTTP(w, r)

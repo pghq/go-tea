@@ -1,4 +1,4 @@
-package router
+package tea
 
 import (
 	"fmt"
@@ -10,9 +10,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pghq/go-museum/museum/transmit"
-	"github.com/pghq/go-museum/museum/transmit/cache"
 )
 
 func TestNewRouter(t *testing.T) {
@@ -25,9 +22,9 @@ func TestNewRouter(t *testing.T) {
 func TestRouter_Get(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("GET").
-			CacheOptions(cache.PositiveFor(time.Second)).
+			CacheOptions(PositiveCacheFor(time.Second)).
 			Path("/v0/tests").
 			ExpectRoute("/tests").
 			ExpectResponse("ok")
@@ -39,7 +36,7 @@ func TestRouter_Get(t *testing.T) {
 func TestRouter_Post(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("POST").
 			Path("/v0/tests").
 			Body("test").
@@ -53,7 +50,7 @@ func TestRouter_Post(t *testing.T) {
 func TestRouter_Put(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("PUT").
 			Path("/v0/tests/test").
 			Body("test").
@@ -67,7 +64,7 @@ func TestRouter_Put(t *testing.T) {
 func TestRouter_Patch(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("PATCH").
 			Path("/v0/tests/test").
 			Body("test").
@@ -81,7 +78,7 @@ func TestRouter_Patch(t *testing.T) {
 func TestRouter_Delete(t *testing.T) {
 	t.Run("routes method", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("DELETE").
 			Path("/v0/tests/test").
 			ExpectRoute("/tests/test").
@@ -95,7 +92,7 @@ func TestRouter_At(t *testing.T) {
 	t.Run("routes sub-path", func(t *testing.T) {
 		r := NewRouter(0).
 			At("/tests")
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests/test").
 			ExpectRoute("/test").
@@ -108,12 +105,12 @@ func TestRouter_At(t *testing.T) {
 func TestRouter_Middleware(t *testing.T) {
 	t.Run("processes handler", func(t *testing.T) {
 		r := NewRouter(0).
-			Middleware(transmit.MiddlewareFunc(func(next http.Handler) http.Handler {
+			Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					w.WriteHeader(http.StatusNoContent)
 				})
 			}))
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
 			ExpectRoute("/tests").
@@ -135,7 +132,7 @@ func TestNotFoundHandler(t *testing.T) {
 
 	t.Run("routes not found", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests/test").
 			ExpectRoute("/tests").
@@ -158,7 +155,7 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 
 	t.Run("routes method not allowed", func(t *testing.T) {
 		r := NewRouter(0)
-		req := NewRequest(t).
+		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
 			ExpectRoute("/tests").
@@ -228,7 +225,7 @@ type RequestBuilder struct {
 	path      string
 	method    string
 	body      string
-	cacheOpts []cache.Option
+	cacheOpts []CacheOption
 	router    struct {
 		method string
 		path   string
@@ -254,7 +251,7 @@ func (b *RequestBuilder) Path(path string) *RequestBuilder {
 	return b
 }
 
-func (b *RequestBuilder) CacheOptions(opts ...cache.Option) *RequestBuilder {
+func (b *RequestBuilder) CacheOptions(opts ...CacheOption) *RequestBuilder {
 	b.cacheOpts = opts
 
 	return b
@@ -319,7 +316,7 @@ func (b *RequestBuilder) Response() *http.Response {
 	return &w
 }
 
-func NewRequest(t *testing.T) *RequestBuilder {
+func NewRequestBuilder(t *testing.T) *RequestBuilder {
 	b := RequestBuilder{t: t}
 	b.response.code = http.StatusOK
 	return &b

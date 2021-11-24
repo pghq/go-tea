@@ -1,4 +1,4 @@
-package errors
+package tea
 
 import (
 	"bytes"
@@ -13,29 +13,56 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pghq/go-museum/museum/diagnostic/log"
 )
 
-func TestWrap(t *testing.T) {
+func TestError(t *testing.T) {
 	t.Run("adds stacktrace to application errors", func(t *testing.T) {
-		err := Wrap(New("an error has occurred"))
+		err := Error(NewError("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Less(t, 1, strings.Count(fmt.Sprintf("%+v", err), "\n"))
 		assert.Contains(t, err.Error(), "an error has occurred")
 	})
 
 	t.Run("adds stacktrace to internal errors", func(t *testing.T) {
-		err := Wrap(errors.New("an error has occurred"))
+		err := Error(errors.New("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Less(t, 1, strings.Count(fmt.Sprintf("%+v", err), "\n"))
 		assert.Contains(t, err.Error(), "an error has occurred")
+	})
+
+	t.Run("logs message", func(t *testing.T) {
+		LogLevel("error")
+		defer ResetLog()
+		var buf bytes.Buffer
+		LogWriter(&buf)
+		logger := CurrentLogger().Error(errors.New("a log message"))
+		assert.NotNil(t, logger)
+		assert.Contains(t, buf.String(), "error")
+		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
+		assert.Contains(t, buf.String(), "time")
+	})
+}
+
+func TestHTTPError(t *testing.T) {
+	req := httptest.NewRequest("GET", "/tests", nil)
+
+	t.Run("logs message", func(t *testing.T) {
+		LogLevel("error")
+		defer ResetLog()
+		var buf bytes.Buffer
+		LogWriter(&buf)
+		logger := CurrentLogger().HTTPError(req, http.StatusBadRequest, errors.New("a log message"))
+		assert.NotNil(t, logger)
+		assert.Contains(t, buf.String(), "error")
+		assert.Contains(t, buf.String(), "/tests")
+		assert.Contains(t, buf.String(), "400")
+		assert.Contains(t, buf.String(), "time")
 	})
 }
 
 func TestNew(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		err := New("an error has occurred")
+		err := NewError("an error has occurred")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "an error has occurred")
 	})
@@ -43,7 +70,7 @@ func TestNew(t *testing.T) {
 
 func TestNewf(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		err := Newf("an %s has occurred", "error")
+		err := NewErrorf("an %s has occurred", "error")
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "an error has occurred")
 	})
@@ -51,7 +78,7 @@ func TestNewf(t *testing.T) {
 
 func TestHTTP(t *testing.T) {
 	t.Run("can cast", func(t *testing.T) {
-		err := HTTP(http.StatusBadRequest, errors.New("an error has occurred"))
+		err := HTTPError(http.StatusBadRequest, errors.New("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "an error has occurred")
 	})
@@ -59,7 +86,7 @@ func TestHTTP(t *testing.T) {
 
 func TestNewHTTP(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		err := NewHTTP(http.StatusConflict, "an error has occurred")
+		err := NewHTTPError(http.StatusConflict, "an error has occurred")
 		assert.NotNil(t, err)
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
@@ -112,29 +139,29 @@ func TestNewNoContent(t *testing.T) {
 	})
 }
 
-func TestAs(t *testing.T) {
+func TestAsError(t *testing.T) {
 	t.Run("can detect error type", func(t *testing.T) {
-		err := New("an error has occurred")
-		as := As(&applicationError{}, &err)
+		err := NewError("an error has occurred")
+		as := AsError(&applicationError{}, &err)
 		assert.True(t, as)
 	})
 }
 
 func TestIsFatal(t *testing.T) {
 	t.Run("can detect fatal errors", func(t *testing.T) {
-		err := New("an error has occurred")
+		err := NewError("an error has occurred")
 		assert.True(t, IsFatal(err))
 	})
 
 	t.Run("can detect non fatal errors", func(t *testing.T) {
-		err := NewHTTP(http.StatusNoContent, "an error has occurred")
+		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		assert.False(t, IsFatal(err))
 	})
 }
 
 func TestStatusCode(t *testing.T) {
 	t.Run("detects status code for no content errors", func(t *testing.T) {
-		err := NewHTTP(http.StatusNoContent, "an error has occurred")
+		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		assert.Equal(t, http.StatusNoContent, StatusCode(err))
 	})
 
@@ -142,7 +169,7 @@ func TestStatusCode(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		assert.Equal(t, http.StatusBadRequest, StatusCode(ctx.Err()))
-		assert.Equal(t, http.StatusBadRequest, StatusCode(Wrap(ctx.Err())))
+		assert.Equal(t, http.StatusBadRequest, StatusCode(Error(ctx.Err())))
 	})
 
 	t.Run("detects status code for deadline exceeded errors", func(t *testing.T) {
@@ -151,7 +178,7 @@ func TestStatusCode(t *testing.T) {
 
 		time.Sleep(time.Microsecond)
 		assert.Equal(t, http.StatusRequestTimeout, StatusCode(ctx.Err()))
-		assert.Equal(t, http.StatusRequestTimeout, StatusCode(Wrap(ctx.Err())))
+		assert.Equal(t, http.StatusRequestTimeout, StatusCode(Error(ctx.Err())))
 	})
 
 	t.Run("detects status code for internal errors", func(t *testing.T) {
@@ -159,22 +186,22 @@ func TestStatusCode(t *testing.T) {
 	})
 }
 
-func TestSend(t *testing.T) {
+func TestSendError(t *testing.T) {
 	t.Run("emits fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
-		log.Writer(&buf)
-		defer log.Reset()
-		err := New("an error has occurred")
-		Send(err)
+		LogWriter(&buf)
+		defer ResetLog()
+		err := NewError("an error has occurred")
+		SendError(err)
 		assert.Contains(t, buf.String(), "an error has occurred")
 	})
 
 	t.Run("emits non fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
-		log.Writer(&buf)
-		defer log.Reset()
-		err := NewHTTP(http.StatusNoContent, "an error has occurred")
-		Send(err)
+		LogWriter(&buf)
+		defer ResetLog()
+		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
+		SendError(err)
 		assert.Empty(t, buf.String())
 	})
 }
@@ -184,10 +211,10 @@ func TestSendHTTP(t *testing.T) {
 
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
-		log.Writer(&buf)
-		defer log.Reset()
+		LogWriter(&buf)
+		defer ResetLog()
 		w := httptest.NewRecorder()
-		err := New("an error has occurred")
+		err := NewError("an error has occurred")
 		SendHTTP(w, req, err)
 		assert.Equal(t, 500, w.Code)
 		assert.Contains(t, buf.String(), "an error has occurred")
@@ -195,10 +222,10 @@ func TestSendHTTP(t *testing.T) {
 
 	t.Run("emits non fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
-		log.Writer(&buf)
-		defer log.Reset()
+		LogWriter(&buf)
+		defer ResetLog()
 		w := httptest.NewRecorder()
-		err := NewHTTP(http.StatusNoContent, "an error has occurred")
+		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		SendHTTP(w, req, err)
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Empty(t, buf.String())
@@ -207,8 +234,8 @@ func TestSendHTTP(t *testing.T) {
 
 func TestRecover(t *testing.T) {
 	t.Run("monitors panics", func(t *testing.T) {
-		log.Writer(io.Discard)
-		defer log.Reset()
+		LogWriter(io.Discard)
+		defer ResetLog()
 		defer func() { Recover(recover()) }()
 		panic("an error has occurred")
 	})
@@ -234,33 +261,5 @@ func TestInit(t *testing.T) {
 
 		err := Init(conf)
 		assert.Nil(t, err)
-	})
-}
-
-func TestNewMiddleware(t *testing.T) {
-	t.Run("can create instance", func(t *testing.T) {
-		m := NewMiddleware()
-		assert.NotNil(t, m)
-	})
-}
-
-func TestMiddleware_Handle(t *testing.T) {
-	t.Run("handles panics", func(t *testing.T) {
-		defer func() {
-			err := recover()
-			if err != nil {
-				t.Fatalf("panic not expected: %+v", err)
-			}
-		}()
-
-		m := NewMiddleware()
-		r := httptest.NewRequest("OPTIONS", "/tests", nil)
-		w := httptest.NewRecorder()
-
-		panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			panic("an error has occurred")
-		})
-
-		m.Handle(panicHandler).ServeHTTP(w, r)
 	})
 }

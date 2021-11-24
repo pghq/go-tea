@@ -1,17 +1,4 @@
-// Copyright 2021 PGHQ. All Rights Reserved.
-//
-// Licensed under the GNU General Public License, Version 3 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Package response provides resources for replying to requests
-package response
+package tea
 
 import (
 	"encoding/base64"
@@ -19,22 +6,19 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/transmit/request"
 )
 
 // Response is the http response
 type Response struct {
-	header http.Header
-	body interface{}
-	status int
+	header   http.Header
+	body     interface{}
+	status   int
 	cachedAt time.Time
 	cursor   *time.Time
 }
 
 // Send sends an HTTP response based on content type and body
-func (r *Response) Send(w http.ResponseWriter, req *http.Request){
+func (r *Response) Send(w http.ResponseWriter, req *http.Request) {
 	if r == nil || r.body == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -46,12 +30,12 @@ func (r *Response) Send(w http.ResponseWriter, req *http.Request){
 	}
 
 	bytes, ct, err := r.Bytes(req)
-	if err != nil{
-		errors.SendHTTP(w, req, err)
+	if err != nil {
+		SendHTTP(w, req, err)
 		return
 	}
 
-	if ct != ""{
+	if ct != "" {
 		headers.Set("Content-Type", ct)
 	}
 
@@ -60,7 +44,7 @@ func (r *Response) Send(w http.ResponseWriter, req *http.Request){
 }
 
 // Body sets the response body
-func (r *Response) Body(body interface{}) *Response{
+func (r *Response) Body(body interface{}) *Response {
 	r.body = body
 	return r
 }
@@ -117,32 +101,32 @@ func (r *Response) Headers(w http.ResponseWriter, req *http.Request) http.Header
 }
 
 // Bytes gets the response as bytes based on origin
-func (r *Response) Bytes(req *http.Request) ([]byte, string, error){
-	if request.Accepts(req, "*/*"){
-		if body, ok := r.body.([]byte); ok{
+func (r *Response) Bytes(req *http.Request) ([]byte, string, error) {
+	if Accepts(req, "*/*") {
+		if body, ok := r.body.([]byte); ok {
 			return body, "", nil
 		}
 
-		if body, ok := r.body.(string); ok{
+		if body, ok := r.body.(string); ok {
 			return []byte(body), "", nil
 		}
 	}
 
 	switch {
-	case request.Accepts(req, "application/json"):
+	case Accepts(req, "application/json"):
 		bytes, err := json.Marshal(r.body)
 		if err != nil {
-			return nil, "", errors.Wrap(err)
+			return nil, "", Error(err)
 		}
 
 		return bytes, "application/json", nil
 	}
 
-	return nil, "", errors.NewBadRequest("unsupported content type")
+	return nil, "", NewBadRequest("unsupported content type")
 }
 
-// New creates a new response to be sent
-func New() *Response {
+// NewResponse creates a new response to be sent
+func NewResponse() *Response {
 	r := Response{
 		status: http.StatusOK,
 	}

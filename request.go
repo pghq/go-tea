@@ -1,17 +1,4 @@
-// Copyright 2021 PGHQ. All Rights Reserved.
-//
-// Licensed under the GNU General Public License, Version 3 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Package request provides resources for decoding http requests
-package request
+package tea
 
 import (
 	"bytes"
@@ -20,11 +7,13 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pghq/go-museum/museum/diagnostic/errors"
+	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 )
 
 const (
@@ -38,11 +27,100 @@ const (
 	maxQueryLimit = 100
 )
 
+// decoder is a global request decoder.
+var decoder = NewDecoder()
+
+// Decoder is an instance of a http request decoder
+type Decoder struct {
+	schema *schema.Decoder
+}
+
+// Decode decodes an http request to a value
+func (d *Decoder) Decode(r *http.Request, v interface{}) error {
+	d.schema.IgnoreUnknownKeys(true)
+	d.schema.ZeroEmpty(true)
+	d.schema.SetAliasTag("json")
+
+	// Query parameters and path parameters get decoded
+	if err := d.schema.Decode(v, r.URL.Query()); err != nil {
+		return Error(err)
+	}
+
+	// path returns a map of parameters within the path
+	path := func(r *http.Request) url.Values {
+		vars := mux.Vars(r)
+		parameters := make(url.Values)
+		for key, value := range vars {
+			parameters.Set(key, value)
+		}
+
+		return parameters
+	}
+
+	if err := d.schema.Decode(v, path(r)); err != nil {
+		return Error(err)
+	}
+
+	return nil
+}
+
+// NewDecoder creates a request decoder with sane defaults.
+func NewDecoder() *Decoder {
+	return &Decoder{
+		schema: schema.NewDecoder(),
+	}
+}
+
+// CurrentDecoder gets an instance of the global request decoder
+func CurrentDecoder() *Decoder {
+	return decoder
+}
+
+// Request is an instance of a http request
+type Request struct {
+	query interface{}
+	body interface{}
+}
+
+// Query sets the query to decode to
+func (r *Request) Query(v interface{}) *Request{
+	r.query = v
+	return r
+}
+
+// Body sets the body to decode to
+func (r *Request) Body(v interface{}) *Request{
+	r.body = v
+	return r
+}
+
+// Decode the request
+func (r *Request) Decode(w http.ResponseWriter, req *http.Request) error{
+	if r.query != nil{
+		if err := DecodeURL(req, r.query); err != nil{
+			return Error(err)
+		}
+	}
+
+	if r.body != nil{
+		if err := DecodeBody(w, req, r.body); err != nil{
+			return Error(err)
+		}
+	}
+
+	return nil
+}
+
+// NewRequest creates an instance of a http request
+func NewRequest() *Request{
+	return &Request{}
+}
+
 // DecodeBody is a method to decode a http request body into a value
 // JSON and schema struct tags are supported
 func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if v == nil {
-		return errors.New("value must be defined")
+		return NewError("value must be defined")
 	}
 
 	if r.Body == http.NoBody {
@@ -51,7 +129,7 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return errors.BadRequest(err)
+		return BadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -62,10 +140,10 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return errors.BadRequest(err)
+			return BadRequest(err)
 		}
 	default:
-		return errors.NewBadRequest("content type not supported")
+		return NewBadRequest("content type not supported")
 	}
 
 	return nil
@@ -75,7 +153,7 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return nil, errors.BadRequest(err)
+		return nil, BadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -88,13 +166,13 @@ func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multip
 
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return nil, errors.BadRequest(err)
+		return nil, BadRequest(err)
 	}
 
 	for {
 		part, err := reader.NextPart()
 		if err != nil {
-			return nil, errors.BadRequest(err)
+			return nil, BadRequest(err)
 		}
 
 		if part.FormName() == name {
@@ -107,12 +185,12 @@ func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multip
 // schema struct tags are supported
 func DecodeURL(r *http.Request, v interface{}) error {
 	if v == nil {
-		return errors.New("value must be defined")
+		return NewError("value must be defined")
 	}
 
 	rd := CurrentDecoder()
 	if err := rd.Decode(r, v); err != nil {
-		return errors.BadRequest(err)
+		return BadRequest(err)
 	}
 
 	return nil
@@ -134,12 +212,12 @@ func Authorization(r *http.Request) (string, string) {
 func Page(r *http.Request) (int, *time.Time, error) {
 	first, err := First(r)
 	if err != nil {
-		return 0, nil, errors.Wrap(err)
+		return 0, nil, Error(err)
 	}
 
 	after, err := After(r)
 	if err != nil {
-		return 0, nil, errors.Wrap(err)
+		return 0, nil, Error(err)
 	}
 
 	return first, after, nil
@@ -150,11 +228,11 @@ func First(r *http.Request) (int, error) {
 	if f := r.URL.Query().Get("first"); f != "" {
 		first, err := strconv.ParseInt(f, 10, 64)
 		if err != nil {
-			return 0, errors.BadRequest(err)
+			return 0, BadRequest(err)
 		}
 
 		if first > maxQueryLimit {
-			return 0, errors.NewBadRequest("too many results desired")
+			return 0, NewBadRequest("too many results desired")
 		}
 
 		return int(first), nil
@@ -168,12 +246,12 @@ func After(r *http.Request) (*time.Time, error) {
 	if a := r.URL.Query().Get("after"); a != "" {
 		ds, err := base64.StdEncoding.DecodeString(a)
 		if err != nil {
-			return nil, errors.BadRequest(err)
+			return nil, BadRequest(err)
 		}
 
 		after, err := time.Parse(time.RFC3339Nano, string(ds))
 		if err != nil {
-			return nil, errors.BadRequest(err)
+			return nil, BadRequest(err)
 		}
 
 		return &after, nil

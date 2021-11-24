@@ -1,27 +1,33 @@
-# go-museum
+# go-tea
 
-SDK for building go apps within the organization.
+Golang starter library for REST web apps and client libraries (internal only).
 
 ## Installation
 
-go-museum may be installed using the go get command:
+go-tea may be installed using the go get command:
 
 ```
-go get github.com/pghq/go-museum
+go get github.com/pghq/go-tea
 ```
 ## Usage
-
-```
-import "github.com/pghq/go-museum/museum"
-```
-
 To create a new app:
 
 ```
-app, err := museum.New()
-if err != nil{
-    panic(err)
-}
+import "github.com/pghq/go-tea"
 
-// TODO: See tests for specific use cases...
+app, err := tea.NewApp()
+if err != nil{
+    tea.SendError(err)
+}
+```
+
+To retrieve the router and add routes/middleware:
+```
+router := app.Router()
+router.Get("/hello", func(w http.ResponseWriter, r *http.Request){
+    tea.Debug("hello")
+    w.Write([]byte("hello"))
+})
+var middleware []Middleware
+http.ListenAndServe(":8080", r.Middleware(middleware...))
 ```

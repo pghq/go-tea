@@ -1,17 +1,18 @@
-package museum
+package tea
 
 import (
+	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pghq/go-museum/museum/internal"
+	"github.com/pghq/go-tea/internal"
 )
 
-func TestNew(t *testing.T) {
+func TestNewApp(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		app, err := New()
+		app, err := NewApp()
 		assert.Nil(t, err)
 		assert.NotNil(t, app)
 	})
@@ -19,13 +20,13 @@ func TestNew(t *testing.T) {
 	t.Run("raises bad dsn errors", func(t *testing.T) {
 		_ = os.Setenv("SENTRY_DSN", "https://localhost")
 		defer os.Clearenv()
-		_, err := New()
+		_, err := NewApp()
 		assert.NotNil(t, err)
 	})
 }
 
 func TestApp_Health(t *testing.T) {
-	app, err := New()
+	app, err := NewApp()
 	assert.Nil(t, err)
 
 	t.Run("can create instance", func(t *testing.T) {
@@ -34,10 +35,13 @@ func TestApp_Health(t *testing.T) {
 }
 
 func TestApp_Router(t *testing.T) {
-	app, _ := New()
+	app, _ := NewApp()
 
 	t.Run("can create instance", func(t *testing.T) {
-		assert.NotNil(t, app.Router())
+		r := app.Router()
+		assert.NotNil(t, r)
+
+		r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/v0/health/status", nil))
 	})
 }
 
@@ -58,7 +62,7 @@ func TestEnvironmentOption_Apply(t *testing.T) {
 	})
 
 	t.Run("can create instance", func(t *testing.T) {
-		app, _ := New(o)
+		app, _ := NewApp(o)
 		assert.Equal(t, app.environment, "test")
 	})
 }
@@ -75,7 +79,7 @@ func TestVersionOption_Apply(t *testing.T) {
 
 	t.Run("raises bad version errors", func(t *testing.T) {
 		o := Version("")
-		_, err := New(o)
+		_, err := NewApp(o)
 		assert.NotNil(t, err)
 	})
 
@@ -86,7 +90,7 @@ func TestVersionOption_Apply(t *testing.T) {
 	})
 
 	t.Run("can create instance", func(t *testing.T) {
-		app, _ := New(o)
+		app, _ := NewApp(o)
 		assert.Equal(t, app.version.String(), "1.0.0")
 	})
 }
