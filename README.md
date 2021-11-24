@@ -1,6 +1,6 @@
 # go-tea
 
-Golang starter library for REST web apps and client libraries (internal only).
+Golang entrypoint for REST web apps and client libraries (internal only).
 
 ## Installation
 

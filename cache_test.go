@@ -151,8 +151,8 @@ func TestCacheMiddleware_Handle(t *testing.T) {
 	})
 
 	t.Run("raises fatal errors", func(t *testing.T) {
-		LogWriter(io.Discard)
-		defer ResetLog()
+		SetGlobalLogWriter(io.Discard)
+		defer ResetGlobalLogger()
 		w := httptest.NewRecorder()
 		m := NewCacheMiddleware(c)
 		c.lru.Add(CacheRequestKey(r), "test")
@@ -161,8 +161,8 @@ func TestCacheMiddleware_Handle(t *testing.T) {
 	})
 
 	t.Run("raises cached response errors", func(t *testing.T) {
-		LogWriter(io.Discard)
-		defer ResetLog()
+		SetGlobalLogWriter(io.Discard)
+		defer ResetGlobalLogger()
 		w := httptest.NewRecorder()
 		m := NewCacheMiddleware(c)
 		_ = c.Insert(CacheRequestKey(r), "test", time.Minute)

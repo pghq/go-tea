@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	// DefaultLogLevel is the default log level for the logger
-	DefaultLogLevel = zerolog.InfoLevel
+	// DefaultSetGlobalLogLevel is the default log level for the logger
+	DefaultSetGlobalLogLevel = zerolog.InfoLevel
 )
 
 // logLock provides safe concurrent access for the global logger
@@ -23,8 +23,8 @@ var logLock sync.Mutex
 // Logger is a global Logger
 var logger = NewLogger()
 
-// LogWriter sets the Writer for the global Logger
-func LogWriter(w io.Writer) {
+// SetGlobalLogWriter sets the Writer for the global Logger
+func SetGlobalLogWriter(w io.Writer) {
 	logLock.Lock()
 	defer logLock.Unlock()
 
@@ -32,8 +32,8 @@ func LogWriter(w io.Writer) {
 	l.Writer(w)
 }
 
-// LogLevel sets the default log level for the global Logger
-func LogLevel(level string) {
+// SetGlobalLogLevel sets the default log level for the global Logger
+func SetGlobalLogLevel(level string) {
 	logLock.Lock()
 	defer logLock.Unlock()
 
@@ -41,18 +41,18 @@ func LogLevel(level string) {
 	l.Level(level)
 }
 
-// Write prints a debug level message in isolation to stdout
-func Write(w io.Writer, v ...interface{}){
+// Debug prints a debug level message in isolation to the writer
+func Debug(w io.Writer, v ...interface{}) {
 	NewLogger().Writer(w).Level("debug").Debug(fmt.Sprint(v...))
 }
 
-// Writef prints a debug level formatted message in isolation to stdout
-func Writef(w io.Writer, format string, args ...interface{}){
+// Debugf prints a debug level formatted message in isolation to the writer
+func Debugf(w io.Writer, format string, args ...interface{}) {
 	NewLogger().Writer(w).Level("debug").Debug(fmt.Sprintf(format, args...))
 }
 
-// Print a series of values at a given level
-func Print(level string, v ...interface{}) *Logger {
+// Log a series of values at a given level
+func Log(level string, v ...interface{}) *Logger {
 	logLock.Lock()
 	defer logLock.Unlock()
 
@@ -69,43 +69,13 @@ func Print(level string, v ...interface{}) *Logger {
 	return l
 }
 
-// Printf prints a formatted message at a given level
-func Printf(level, format string, args ...interface{}) *Logger {
-	return Print(level, fmt.Sprintf(format, args...))
+// Logf prints a formatted message at a given level
+func Logf(level, format string, args ...interface{}) *Logger {
+	return Log(level, fmt.Sprintf(format, args...))
 }
 
-// Debug sends a debug level message
-func Debug(v ...interface{}) *Logger {
-	return Print("debug", v...)
-}
-
-// Debugf sends a formatted debug level message
-func Debugf(format string, args ...interface{}) *Logger {
-	return Printf("debug", format, args...)
-}
-
-// Info sends an info level message
-func Info(v ...interface{}) *Logger {
-	return Print("info", v...)
-}
-
-// Infof sends a formatted info level message
-func Infof(format string, args ...interface{}) *Logger {
-	return Printf("info", format, args...)
-}
-
-// Warn sends a warning level message
-func Warn(v ...interface{}) *Logger {
-	return Print("warn", v...)
-}
-
-// Warnf sends a formatted warning level message
-func Warnf(format string, args ...interface{}) *Logger {
-	return Printf("warn", format, args...)
-}
-
-// ResetLog sets the global logger to default values
-func ResetLog() {
+// ResetGlobalLogger sets the global logger to default values
+func ResetGlobalLogger() {
 	logLock.Lock()
 	defer logLock.Unlock()
 
@@ -154,13 +124,13 @@ func (l *Logger) HTTPError(r *http.Request, status int, err error) *Logger {
 }
 
 // Writer sets the io writer for the global logger
-func (l *Logger) Writer(w io.Writer) *Logger{
+func (l *Logger) Writer(w io.Writer) *Logger {
 	l.w = l.w.Output(w)
 	return l
 }
 
 // Level sets the log level for the global logger
-func (l *Logger) Level(level string) *Logger{
+func (l *Logger) Level(level string) *Logger {
 	switch strings.ToLower(level) {
 	case "debug":
 		l.w = l.w.Level(zerolog.DebugLevel)
@@ -181,7 +151,7 @@ func NewLogger() *Logger {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	cw := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
 	return &Logger{
-		w: zerolog.New(cw).With().Timestamp().Logger().Level(DefaultLogLevel),
+		w: zerolog.New(cw).With().Timestamp().Logger().Level(DefaultSetGlobalLogLevel),
 	}
 }
 

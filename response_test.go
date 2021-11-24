@@ -18,8 +18,8 @@ func TestSend(t *testing.T) {
 	})
 
 	t.Run("raises encode errors", func(t *testing.T) {
-		LogWriter(io.Discard)
-		defer ResetLog()
+		SetGlobalLogWriter(io.Discard)
+		defer ResetGlobalLogger()
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
 		NewResponse().Body(func() {}).Send(w, req)
