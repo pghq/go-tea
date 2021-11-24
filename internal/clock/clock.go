@@ -16,7 +16,7 @@ package clock
 import (
 	"time"
 
-	"github.com/pghq/go-museum/museum/internal"
+	"github.com/pghq/go-tea/internal"
 )
 
 // clock is an instance of the internal Clock

@@ -10,20 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package museum provides a starting point for building apps within the org.
-package museum
+// Package tea provides a starting point for building apps within the org.
+package tea
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/hashicorp/go-version"
 
-	"github.com/pghq/go-museum/museum/diagnostic/errors"
-	"github.com/pghq/go-museum/museum/diagnostic/health"
-	"github.com/pghq/go-museum/museum/internal"
-	"github.com/pghq/go-museum/museum/internal/clock"
-	"github.com/pghq/go-museum/museum/transmit/cors"
-	"github.com/pghq/go-museum/museum/transmit/router"
+	"github.com/pghq/go-tea/health"
+	"github.com/pghq/go-tea/internal"
+	"github.com/pghq/go-tea/internal/clock"
 )
 
 const (
@@ -40,8 +38,8 @@ type App struct {
 	environment string
 }
 
-// New constructs a new application instance
-func New(opts ...internal.AppOption) (*App, error) {
+// NewApp constructs a new application instance
+func NewApp(opts ...internal.AppOption) (*App, error) {
 	conf := defaultConfig()
 	for _, opt := range opts {
 		opt.Apply(conf)
@@ -49,7 +47,7 @@ func New(opts ...internal.AppOption) (*App, error) {
 
 	v, err := version.NewVersion(conf.Version)
 	if err != nil {
-		return nil, errors.Wrap(err)
+		return nil, Error(err)
 	}
 
 	app := &App{
@@ -57,7 +55,7 @@ func New(opts ...internal.AppOption) (*App, error) {
 		environment: conf.Environment,
 	}
 
-	err = errors.Init(errors.MonitorConfig{
+	err = Init(MonitorConfig{
 		Version:     app.version.String(),
 		Environment: app.environment,
 	})
@@ -71,14 +69,17 @@ func New(opts ...internal.AppOption) (*App, error) {
 
 // Health provides a client for services within the health domain
 func (a *App) Health() *health.Client {
-	return health.New(a.version.String(), clock.New(time.Now()))
+	return health.NewClient(a.version.String(), clock.New(time.Now()))
 }
 
 // Router provides a Router for serving http traffic.
-func (a *App) Router(origins ...string) *router.Router {
-	r := router.NewRouter(a.version.Segments()[0]).
-		Middleware(errors.NewMiddleware(), cors.New(origins...)).
-		Get("/health/status", a.Health().Handler().Status)
+func (a *App) Router(origins ...string) *Router {
+	r := NewRouter(a.version.Segments()[0]).
+		Middleware(NewSentryMiddleware(), NewCORSMiddleware(origins...)).
+		Get("/health/status", func(w http.ResponseWriter, r *http.Request) {
+			status := a.Health().Checks.Status()
+			NewResponse().Body(status).Send(w, r)
+		})
 
 	return r
 }

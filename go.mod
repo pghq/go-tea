@@ -1,4 +1,4 @@
-module github.com/pghq/go-museum
+module github.com/pghq/go-tea
 
 go 1.17
 

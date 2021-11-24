@@ -1,38 +1,22 @@
-// Copyright 2021 PGHQ. All Rights Reserved.
-//
-// Licensed under the GNU General Public License, Version 3 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// Package router provides a http router for handling requests.
-package router
+package tea
 
 import (
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
-
-	"github.com/pghq/go-museum/museum/transmit"
-	"github.com/pghq/go-museum/museum/transmit/cache"
 )
 
 // Router is an instance of a mux based Router
 type Router struct {
 	mux   *mux.Router
-	cache *cache.LRU
+	cache *LRU
 }
 
 // Get adds a handler for the path using the GET http method
-func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...cache.Option) *Router {
+func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...CacheOption) *Router {
 	if len(opts) > 0 {
-		handlerFunc = cache.NewMiddleware(r.cache).
+		handlerFunc = NewCacheMiddleware(r.cache).
 			With(opts...).
 			Handle(handlerFunc).
 			ServeHTTP
@@ -80,7 +64,7 @@ func (r *Router) At(path string) *Router {
 }
 
 // Middleware adds a handler to execute before/after the principle request handler
-func (r *Router) Middleware(middlewares ...transmit.Middleware) *Router {
+func (r *Router) Middleware(middlewares ...Middleware) *Router {
 	for _, m := range middlewares {
 		r.mux.Use(m.Handle)
 	}
@@ -99,7 +83,7 @@ func NewRouter(version int) *Router {
 			StrictSlash(true).
 			PathPrefix(fmt.Sprintf("/v%d", version)).
 			Subrouter(),
-		cache: cache.NewLRU(),
+		cache: NewLRU(),
 	}
 
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
