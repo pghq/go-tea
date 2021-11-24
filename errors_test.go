@@ -31,10 +31,10 @@ func TestError(t *testing.T) {
 	})
 
 	t.Run("logs message", func(t *testing.T) {
-		LogLevel("error")
-		defer ResetLog()
+		SetGlobalLogLevel("error")
+		defer ResetGlobalLogger()
 		var buf bytes.Buffer
-		LogWriter(&buf)
+		SetGlobalLogWriter(&buf)
 		logger := CurrentLogger().Error(errors.New("a log message"))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "error")
@@ -47,10 +47,10 @@ func TestHTTPError(t *testing.T) {
 	req := httptest.NewRequest("GET", "/tests", nil)
 
 	t.Run("logs message", func(t *testing.T) {
-		LogLevel("error")
-		defer ResetLog()
+		SetGlobalLogLevel("error")
+		defer ResetGlobalLogger()
 		var buf bytes.Buffer
-		LogWriter(&buf)
+		SetGlobalLogWriter(&buf)
 		logger := CurrentLogger().HTTPError(req, http.StatusBadRequest, errors.New("a log message"))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "error")
@@ -189,8 +189,8 @@ func TestStatusCode(t *testing.T) {
 func TestSendError(t *testing.T) {
 	t.Run("emits fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		defer ResetLog()
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
 		err := NewError("an error has occurred")
 		SendError(err)
 		assert.Contains(t, buf.String(), "an error has occurred")
@@ -198,8 +198,8 @@ func TestSendError(t *testing.T) {
 
 	t.Run("emits non fatal errors", func(t *testing.T) {
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		defer ResetLog()
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
 		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		SendError(err)
 		assert.Empty(t, buf.String())
@@ -211,8 +211,8 @@ func TestSendHTTP(t *testing.T) {
 
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		defer ResetLog()
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
 		w := httptest.NewRecorder()
 		err := NewError("an error has occurred")
 		SendHTTP(w, req, err)
@@ -222,8 +222,8 @@ func TestSendHTTP(t *testing.T) {
 
 	t.Run("emits non fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		defer ResetLog()
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
 		w := httptest.NewRecorder()
 		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		SendHTTP(w, req, err)
@@ -234,8 +234,8 @@ func TestSendHTTP(t *testing.T) {
 
 func TestRecover(t *testing.T) {
 	t.Run("monitors panics", func(t *testing.T) {
-		LogWriter(io.Discard)
-		defer ResetLog()
+		SetGlobalLogWriter(io.Discard)
+		defer ResetGlobalLogger()
 		defer func() { Recover(recover()) }()
 		panic("an error has occurred")
 	})

@@ -69,10 +69,10 @@ func TestHandler_Status(t *testing.T) {
 		assert.Equal(t, "0.0.1", resp.Version)
 		assert.Equal(t, StatusHealthy, resp.Status)
 		assert.Equal(t, map[string][]*Check{"uptime": {{
-			Time: now,
+			Time:   now,
 			Status: StatusHealthy,
-			Value: (now.Sub(now)/(1000*1000*1000)).Seconds(),
-			Unit: "s",
+			Value:  (now.Sub(now) / (1000 * 1000 * 1000)).Seconds(),
+			Unit:   "s",
 		}}}, resp.Checks)
 	})
 }

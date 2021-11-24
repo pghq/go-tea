@@ -79,31 +79,31 @@ func CurrentDecoder() *Decoder {
 // Request is an instance of a http request
 type Request struct {
 	query interface{}
-	body interface{}
+	body  interface{}
 }
 
 // Query sets the query to decode to
-func (r *Request) Query(v interface{}) *Request{
+func (r *Request) Query(v interface{}) *Request {
 	r.query = v
 	return r
 }
 
 // Body sets the body to decode to
-func (r *Request) Body(v interface{}) *Request{
+func (r *Request) Body(v interface{}) *Request {
 	r.body = v
 	return r
 }
 
 // Decode the request
-func (r *Request) Decode(w http.ResponseWriter, req *http.Request) error{
-	if r.query != nil{
-		if err := DecodeURL(req, r.query); err != nil{
+func (r *Request) Decode(w http.ResponseWriter, req *http.Request) error {
+	if r.query != nil {
+		if err := DecodeURL(req, r.query); err != nil {
 			return Error(err)
 		}
 	}
 
-	if r.body != nil{
-		if err := DecodeBody(w, req, r.body); err != nil{
+	if r.body != nil {
+		if err := DecodeBody(w, req, r.body); err != nil {
 			return Error(err)
 		}
 	}
@@ -112,7 +112,7 @@ func (r *Request) Decode(w http.ResponseWriter, req *http.Request) error{
 }
 
 // NewRequest creates an instance of a http request
-func NewRequest() *Request{
+func NewRequest() *Request {
 	return &Request{}
 }
 

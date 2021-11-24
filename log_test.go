@@ -11,30 +11,30 @@ import (
 
 func TestDebug(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
-		LogLevel("debug")
-		defer ResetLog()
+		SetGlobalLogLevel("debug")
+		defer ResetGlobalLogger()
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		logger := Debugf("%+v", errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		logger := Logf("debug", "%+v", errors.WithStack(errors.New("a log message")))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "debug")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
 		assert.Contains(t, buf.String(), "time")
 
 		buf.Reset()
-		LogWriter(&buf)
-		Debug(errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		Log("debug", errors.WithStack(errors.New("a log message")))
 		assert.Contains(t, buf.String(), "debug")
 		assert.Contains(t, buf.String(), "time")
 
 		buf.Reset()
-		Writef(&buf, "%+v", errors.WithStack(errors.New("a log message")))
+		Debugf(&buf, "%+v", errors.WithStack(errors.New("a log message")))
 		assert.Contains(t, buf.String(), "debug")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
 		assert.Contains(t, buf.String(), "time")
 
 		buf.Reset()
-		Write(&buf, errors.WithStack(errors.New("a log message")))
+		Debug(&buf, errors.WithStack(errors.New("a log message")))
 		assert.Contains(t, buf.String(), "debug")
 		assert.Contains(t, buf.String(), "time")
 	})
@@ -42,19 +42,19 @@ func TestDebug(t *testing.T) {
 
 func TestInfo(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
-		LogLevel("info")
-		defer ResetLog()
+		SetGlobalLogLevel("info")
+		defer ResetGlobalLogger()
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		logger := Infof("%+v", errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		logger := Logf("info", "%+v", errors.WithStack(errors.New("a log message")))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "info")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
 		assert.Contains(t, buf.String(), "time")
 
 		buf.Reset()
-		LogWriter(&buf)
-		Info(errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		Log("info", errors.WithStack(errors.New("a log message")))
 		assert.Contains(t, buf.String(), "info")
 		assert.Contains(t, buf.String(), "time")
 	})
@@ -62,19 +62,19 @@ func TestInfo(t *testing.T) {
 
 func TestWarn(t *testing.T) {
 	t.Run("logs message", func(t *testing.T) {
-		LogLevel("warn")
-		defer ResetLog()
+		SetGlobalLogLevel("warn")
+		defer ResetGlobalLogger()
 		var buf bytes.Buffer
-		LogWriter(&buf)
-		logger := Warnf("%+v", errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		logger := Logf("warn", "%+v", errors.WithStack(errors.New("a log message")))
 		assert.NotNil(t, logger)
 		assert.Contains(t, buf.String(), "warn")
 		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
 		assert.Contains(t, buf.String(), "time")
 
 		buf.Reset()
-		LogWriter(&buf)
-		Warn(errors.WithStack(errors.New("a log message")))
+		SetGlobalLogWriter(&buf)
+		Log("warn", errors.WithStack(errors.New("a log message")))
 		assert.Contains(t, buf.String(), "warn")
 		assert.Contains(t, buf.String(), "time")
 	})
