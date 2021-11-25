@@ -10,18 +10,10 @@ import (
 // Router is an instance of a mux based Router
 type Router struct {
 	mux   *mux.Router
-	cache *LRU
 }
 
 // Get adds a handler for the path using the GET http method
-func (r *Router) Get(path string, handlerFunc http.HandlerFunc, opts ...CacheOption) *Router {
-	if len(opts) > 0 {
-		handlerFunc = NewCacheMiddleware(r.cache).
-			With(opts...).
-			Handle(handlerFunc).
-			ServeHTTP
-	}
-
+func (r *Router) Get(path string, handlerFunc http.HandlerFunc) *Router {
 	r.mux.HandleFunc(path, handlerFunc).
 		Methods("GET", "OPTIONS")
 
@@ -83,7 +75,6 @@ func NewRouter(version int) *Router {
 			StrictSlash(true).
 			PathPrefix(fmt.Sprintf("/v%d", version)).
 			Subrouter(),
-		cache: NewLRU(),
 	}
 
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)

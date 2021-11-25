@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -24,7 +23,6 @@ func TestRouter_Get(t *testing.T) {
 		r := NewRouter(0)
 		req := NewRequestBuilder(t).
 			Method("GET").
-			CacheOptions(PositiveCacheFor(time.Second)).
 			Path("/v0/tests").
 			ExpectRoute("/tests").
 			ExpectResponse("ok")
@@ -191,7 +189,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 
 	switch strings.ToUpper(b.ExpectedMethod()) {
 	case "GET":
-		r = r.Get(b.ExpectedRoute(), handlerFunc, b.cacheOpts...)
+		r = r.Get(b.ExpectedRoute(), handlerFunc)
 	case "PUT":
 		r = r.Put(b.ExpectedRoute(), handlerFunc)
 	case "POST":
@@ -225,7 +223,6 @@ type RequestBuilder struct {
 	path      string
 	method    string
 	body      string
-	cacheOpts []CacheOption
 	router    struct {
 		method string
 		path   string
@@ -247,12 +244,6 @@ func (b *RequestBuilder) Method(method string) *RequestBuilder {
 
 func (b *RequestBuilder) Path(path string) *RequestBuilder {
 	b.path = path
-
-	return b
-}
-
-func (b *RequestBuilder) CacheOptions(opts ...CacheOption) *RequestBuilder {
-	b.cacheOpts = opts
 
 	return b
 }
