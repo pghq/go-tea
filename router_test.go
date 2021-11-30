@@ -219,11 +219,11 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 }
 
 type RequestBuilder struct {
-	t         *testing.T
-	path      string
-	method    string
-	body      string
-	router    struct {
+	t      *testing.T
+	path   string
+	method string
+	body   string
+	router struct {
 		method string
 		path   string
 	}

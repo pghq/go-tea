@@ -110,7 +110,7 @@ func IsError(err error, target error) bool {
 
 // IsFatal checks if an error is a fatal application error
 func IsFatal(err error) bool {
-	return StatusCode(err) >= http.StatusInternalServerError
+	return err != nil && StatusCode(err) >= http.StatusInternalServerError
 }
 
 // StatusCode gets an HTTP error code from an error
