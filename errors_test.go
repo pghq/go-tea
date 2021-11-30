@@ -156,6 +156,7 @@ func TestIsFatal(t *testing.T) {
 	t.Run("can detect non fatal errors", func(t *testing.T) {
 		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		assert.False(t, IsFatal(err))
+		assert.False(t, IsFatal(nil))
 	})
 }
 

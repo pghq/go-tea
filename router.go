@@ -9,7 +9,7 @@ import (
 
 // Router is an instance of a mux based Router
 type Router struct {
-	mux   *mux.Router
+	mux *mux.Router
 }
 
 // Get adds a handler for the path using the GET http method

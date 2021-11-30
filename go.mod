@@ -7,7 +7,6 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/schema v1.2.0
 	github.com/hashicorp/go-version v1.3.0
-	github.com/hashicorp/golang-lru v0.5.4
 	github.com/pkg/errors v0.9.1
 	github.com/rs/cors v1.8.0
 	github.com/rs/zerolog v1.25.0
