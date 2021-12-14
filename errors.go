@@ -174,6 +174,11 @@ func ResetGlobalExitFunc() {
 // SendHTTP replies to the request with an error
 // and emits fatal http errors to global log and monitor.
 func SendHTTP(w http.ResponseWriter, r *http.Request, err error) {
+	if err == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	msg := err.Error()
 	status := StatusCode(err)
 	if IsFatal(err) {
