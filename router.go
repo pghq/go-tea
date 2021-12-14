@@ -9,47 +9,72 @@ import (
 
 // Router is an instance of a mux based Router
 type Router struct {
-	mux *mux.Router
+	mux         *mux.Router
+	middlewares []Middleware
 }
 
 // Get adds a handler for the path using the GET http method
-func (r *Router) Get(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).
-		Methods("GET", "OPTIONS")
+func (r *Router) Get(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods("GET", "OPTIONS").Subrouter()
+	s.HandleFunc(endpoint, handlerFunc)
+	for _, m := range append(r.middlewares, middlewares...) {
+		s.Use(m.Handle)
+	}
 
 	return r
 }
 
 // Put adds a handler for the path using the PUT http method
-func (r *Router) Put(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).Methods("PUT", "OPTIONS")
+func (r *Router) Put(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods("PUT", "OPTIONS").Subrouter()
+	s.HandleFunc(endpoint, handlerFunc)
+	for _, m := range append(r.middlewares, middlewares...) {
+		s.Use(m.Handle)
+	}
 
 	return r
 }
 
 // Post adds a handler for the path using the POST http method
-func (r *Router) Post(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).Methods("POST", "OPTIONS")
+func (r *Router) Post(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods("POST", "OPTIONS").Subrouter()
+	s.HandleFunc(endpoint, handlerFunc)
+	for _, m := range append(r.middlewares, middlewares...) {
+		s.Use(m.Handle)
+	}
 
 	return r
 }
 
 // Patch adds a handler for the path using the PATCH http method
-func (r *Router) Patch(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).Methods("PATCH", "OPTIONS")
+func (r *Router) Patch(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods("PATCH", "OPTIONS").Subrouter()
+	s.HandleFunc(endpoint, handlerFunc)
+	for _, m := range append(r.middlewares, middlewares...) {
+		s.Use(m.Handle)
+	}
 
 	return r
 }
 
 // Delete adds a handler for the path using the DELETE http method
-func (r *Router) Delete(path string, handlerFunc http.HandlerFunc) *Router {
-	r.mux.HandleFunc(path, handlerFunc).Methods("DELETE", "OPTIONS")
+func (r *Router) Delete(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods("DELETE", "OPTIONS").Subrouter()
+	s.HandleFunc(endpoint, handlerFunc)
+	for _, m := range append(r.middlewares, middlewares...) {
+		s.Use(m.Handle)
+	}
 
 	return r
 }
 
 // At creates a sub-router for handling requests at a sub-path
 func (r *Router) At(path string) *Router {
+	s := r.mux.PathPrefix(path).Subrouter()
+	for _, m := range r.middlewares {
+		s.Use(m.Handle)
+	}
+
 	return &Router{
 		mux: r.mux.PathPrefix(path).Subrouter(),
 	}
@@ -61,6 +86,7 @@ func (r *Router) Middleware(middlewares ...Middleware) *Router {
 		r.mux.Use(m.Handle)
 	}
 
+	r.middlewares = append(r.middlewares, middlewares...)
 	return r
 }
 

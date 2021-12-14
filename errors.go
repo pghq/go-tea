@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -12,6 +14,12 @@ import (
 
 // monitor the initial error monitor with sensible defaults.
 var monitor = NewMonitor()
+
+// exitFunc is the function that is called on exit
+var exitFunc = os.Exit
+
+// exitMutex is the mutex for exit func
+var exitMutex = sync.RWMutex{}
 
 const (
 	// defaultFlushTimeout is the default time to wait for panic errors to be sent
@@ -139,6 +147,28 @@ func SendError(err error) {
 	l := CurrentLogger()
 	l.Error(err)
 	monitor.Send(err)
+}
+
+// Fatal sends a fatal error and exits
+func Fatal(err error) {
+	exitMutex.RLock()
+	defer exitMutex.RUnlock()
+	SendError(err)
+	exitFunc(1)
+}
+
+// SetGlobalExitFunc sets the global exit function
+func SetGlobalExitFunc(fn func(code int)) {
+	exitMutex.Lock()
+	defer exitMutex.Unlock()
+	exitFunc = fn
+}
+
+// ResetGlobalExitFunc resets the global exit function
+func ResetGlobalExitFunc() {
+	exitMutex.Lock()
+	defer exitMutex.Unlock()
+	exitFunc = os.Exit
 }
 
 // SendHTTP replies to the request with an error

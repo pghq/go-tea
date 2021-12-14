@@ -89,6 +89,7 @@ func TestRouter_Delete(t *testing.T) {
 func TestRouter_At(t *testing.T) {
 	t.Run("routes sub-path", func(t *testing.T) {
 		r := NewRouter(0).
+			Middleware(NewSentryMiddleware()).
 			At("/tests")
 		req := NewRequestBuilder(t).
 			Method("GET").
@@ -189,15 +190,15 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 
 	switch strings.ToUpper(b.ExpectedMethod()) {
 	case "GET":
-		r = r.Get(b.ExpectedRoute(), handlerFunc)
+		r = r.Get(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	case "PUT":
-		r = r.Put(b.ExpectedRoute(), handlerFunc)
+		r = r.Put(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	case "POST":
-		r = r.Post(b.ExpectedRoute(), handlerFunc)
+		r = r.Post(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	case "PATCH":
-		r = r.Patch(b.ExpectedRoute(), handlerFunc)
+		r = r.Patch(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	case "DELETE":
-		r = r.Delete(b.ExpectedRoute(), handlerFunc)
+		r = r.Delete(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	default:
 		t.Fatalf("unhandled method %s", b.ExpectedMethod())
 	}
