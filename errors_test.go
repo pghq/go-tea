@@ -240,6 +240,12 @@ func TestSendHTTP(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Empty(t, buf.String())
 	})
+
+	t.Run("no error", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		SendHTTP(w, req, nil)
+		assert.Equal(t, http.StatusNoContent, w.Code)
+	})
 }
 
 func TestSendNotAuthorized(t *testing.T) {
