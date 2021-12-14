@@ -121,3 +121,6 @@ func (o environmentOption) Apply(conf *internal.AppConfig) {
 func Environment(environment string) internal.AppOption {
 	return environmentOption(environment)
 }
+
+// todo: new option pattern
+// todo: determine what can go from this package

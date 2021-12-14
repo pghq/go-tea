@@ -16,6 +16,7 @@ import (
 )
 
 func TestError(t *testing.T) {
+
 	t.Run("adds stacktrace to application errors", func(t *testing.T) {
 		err := Error(NewError("an error has occurred"))
 		assert.NotNil(t, err)
@@ -262,5 +263,14 @@ func TestInit(t *testing.T) {
 
 		err := Init(conf)
 		assert.Nil(t, err)
+	})
+}
+
+func TestFatal(t *testing.T) {
+	t.Run("exits", func(t *testing.T) {
+		SetGlobalExitFunc(func(code int) {})
+		defer ResetGlobalExitFunc()
+
+		Fatal(NewError("error"))
 	})
 }
