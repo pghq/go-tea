@@ -195,6 +195,41 @@ func Recover(err interface{}) {
 	}
 }
 
+// NotFound creates a not found error
+func NotFound(err error) error {
+	return HTTPError(http.StatusNotFound, err)
+}
+
+// NewNotFound creates a not found error from a msg
+func NewNotFound(v ...interface{}) error {
+	return NewHTTPError(http.StatusNotFound, v...)
+}
+
+// IsNotFound checks if an error is a not found application error
+func IsNotFound(err error) bool {
+	return err != nil && StatusCode(err) == http.StatusNotFound
+}
+
+// IsBadRequest checks if an error is a bad request application error
+func IsBadRequest(err error) bool {
+	return err != nil && StatusCode(err) == http.StatusBadRequest
+}
+
+// SendNotAuthorized sends a not authorized error
+func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error) {
+	if IsFatal(err) {
+		SendHTTP(w, r, err)
+		return
+	}
+
+	SendHTTP(w, r, HTTPError(http.StatusUnauthorized, err))
+}
+
+// SendNewNotAuthorized sends a not authorized error message
+func SendNewNotAuthorized(w http.ResponseWriter, r *http.Request, v ...interface{}) {
+	SendNotAuthorized(w, r, NewHTTPError(http.StatusUnauthorized, v...))
+}
+
 // Monitor is an instance of a sentry based Monitor
 type Monitor struct {
 	flushTimeout time.Duration

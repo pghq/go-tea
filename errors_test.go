@@ -16,7 +16,6 @@ import (
 )
 
 func TestError(t *testing.T) {
-
 	t.Run("adds stacktrace to application errors", func(t *testing.T) {
 		err := Error(NewError("an error has occurred"))
 		assert.NotNil(t, err)
@@ -83,10 +82,8 @@ func TestHTTP(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "an error has occurred")
 	})
-}
 
-func TestNewHTTP(t *testing.T) {
-	t.Run("can create instance", func(t *testing.T) {
+	t.Run("can create new", func(t *testing.T) {
 		err := NewHTTPError(http.StatusConflict, "an error has occurred")
 		assert.NotNil(t, err)
 		ae, ok := err.(*applicationError)
@@ -96,10 +93,22 @@ func TestNewHTTP(t *testing.T) {
 	})
 }
 
+func TestNotFound(t *testing.T) {
+	t.Run("from error", func(t *testing.T) {
+		err := NotFound(NewError("error"))
+		assert.True(t, IsNotFound(err))
+	})
+
+	t.Run("from values", func(t *testing.T) {
+		err := NewNotFound("error")
+		assert.True(t, IsNotFound(err))
+	})
+}
+
 func TestBadRequest(t *testing.T) {
 	t.Run("can cast", func(t *testing.T) {
 		err := BadRequest(errors.New("an error has occurred"))
-		assert.NotNil(t, err)
+		assert.True(t, IsBadRequest(err))
 		ae, ok := err.(*applicationError)
 		assert.True(t, ok)
 		assert.Equal(t, http.StatusBadRequest, ae.code)
@@ -210,7 +219,6 @@ func TestSendError(t *testing.T) {
 
 func TestSendHTTP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/tests", nil)
-
 	t.Run("does not emit fatal errors to client", func(t *testing.T) {
 		var buf bytes.Buffer
 		SetGlobalLogWriter(&buf)
@@ -230,6 +238,30 @@ func TestSendHTTP(t *testing.T) {
 		err := NewHTTPError(http.StatusNoContent, "an error has occurred")
 		SendHTTP(w, req, err)
 		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.Empty(t, buf.String())
+	})
+}
+
+func TestSendNotAuthorized(t *testing.T) {
+	req := httptest.NewRequest("GET", "/tests", nil)
+	t.Run("does not emit fatal errors to client", func(t *testing.T) {
+		var buf bytes.Buffer
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
+		w := httptest.NewRecorder()
+		err := NewError("an error has occurred")
+		SendNotAuthorized(w, req, err)
+		assert.Equal(t, 500, w.Code)
+		assert.Contains(t, buf.String(), "an error has occurred")
+	})
+
+	t.Run("emits non fatal errors to client", func(t *testing.T) {
+		var buf bytes.Buffer
+		SetGlobalLogWriter(&buf)
+		defer ResetGlobalLogger()
+		w := httptest.NewRecorder()
+		SendNewNotAuthorized(w, req, "an error has occurred")
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Empty(t, buf.String())
 	})
 }
