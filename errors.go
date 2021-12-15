@@ -221,8 +221,8 @@ func IsBadRequest(err error) bool {
 }
 
 // SendNotAuthorized sends a not authorized error
-func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error) {
-	if IsFatal(err) {
+func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error, force ...bool) {
+	if (len(force) == 0 || !force[0]) && IsFatal(err) {
 		SendHTTP(w, r, err)
 		return
 	}
