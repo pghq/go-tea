@@ -73,9 +73,9 @@ func (a *App) Health() *health.Client {
 }
 
 // Router provides a Router for serving http traffic.
-func (a *App) Router(origins ...string) *Router {
+func (a *App) Router() *Router {
 	r := NewRouter(a.version.Segments()[0]).
-		Middleware(NewSentryMiddleware(), NewCORSMiddleware(origins...)).
+		Middleware(NewSentryMiddleware()).
 		Get("/health/status", func(w http.ResponseWriter, r *http.Request) {
 			status := a.Health().Checks.Status()
 			NewResponse().Body(status).Send(w, r)
@@ -121,6 +121,3 @@ func (o environmentOption) Apply(conf *internal.AppConfig) {
 func Environment(environment string) internal.AppOption {
 	return environmentOption(environment)
 }
-
-// todo: new option pattern
-// todo: determine what can go from this package
