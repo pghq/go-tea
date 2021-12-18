@@ -188,20 +188,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 		}
 	}
 
-	switch strings.ToUpper(b.ExpectedMethod()) {
-	case "GET":
-		r = r.Get(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	case "PUT":
-		r = r.Put(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	case "POST":
-		r = r.Post(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	case "PATCH":
-		r = r.Patch(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	case "DELETE":
-		r = r.Delete(b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	default:
-		t.Fatalf("unhandled method %s", b.ExpectedMethod())
-	}
+	r = r.Route(strings.ToUpper(b.ExpectedMethod()), b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
 	assert.NotNil(t, r)
 
 	s := httptest.NewServer(r)

@@ -13,53 +13,9 @@ type Router struct {
 	middlewares []Middleware
 }
 
-// Get adds a handler for the path using the GET http method
-func (r *Router) Get(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
-	s := r.mux.Methods("GET", "OPTIONS").Subrouter()
-	s.HandleFunc(endpoint, handlerFunc)
-	for _, m := range append(r.middlewares, middlewares...) {
-		s.Use(m.Handle)
-	}
-
-	return r
-}
-
-// Put adds a handler for the path using the PUT http method
-func (r *Router) Put(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
-	s := r.mux.Methods("PUT", "OPTIONS").Subrouter()
-	s.HandleFunc(endpoint, handlerFunc)
-	for _, m := range append(r.middlewares, middlewares...) {
-		s.Use(m.Handle)
-	}
-
-	return r
-}
-
-// Post adds a handler for the path using the POST http method
-func (r *Router) Post(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
-	s := r.mux.Methods("POST", "OPTIONS").Subrouter()
-	s.HandleFunc(endpoint, handlerFunc)
-	for _, m := range append(r.middlewares, middlewares...) {
-		s.Use(m.Handle)
-	}
-
-	return r
-}
-
-// Patch adds a handler for the path using the PATCH http method
-func (r *Router) Patch(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
-	s := r.mux.Methods("PATCH", "OPTIONS").Subrouter()
-	s.HandleFunc(endpoint, handlerFunc)
-	for _, m := range append(r.middlewares, middlewares...) {
-		s.Use(m.Handle)
-	}
-
-	return r
-}
-
-// Delete adds a handler for the path using the DELETE http method
-func (r *Router) Delete(endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
-	s := r.mux.Methods("DELETE", "OPTIONS").Subrouter()
+// Route adds a handler for the path
+func (r *Router) Route(method, endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) *Router {
+	s := r.mux.Methods(method, "OPTIONS").Subrouter()
 	s.HandleFunc(endpoint, handlerFunc)
 	for _, m := range append(r.middlewares, middlewares...) {
 		s.Use(m.Handle)

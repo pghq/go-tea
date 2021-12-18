@@ -76,7 +76,7 @@ func (a *App) Health() *health.Client {
 func (a *App) Router() *Router {
 	r := NewRouter(a.version.Segments()[0]).
 		Middleware(NewSentryMiddleware()).
-		Get("/health/status", func(w http.ResponseWriter, r *http.Request) {
+		Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
 			status := a.Health().Checks.Status()
 			NewResponse().Body(status).Send(w, r)
 		})
