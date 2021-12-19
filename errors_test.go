@@ -150,10 +150,9 @@ func TestNewNoContent(t *testing.T) {
 }
 
 func TestAsError(t *testing.T) {
-	t.Run("can detect error type", func(t *testing.T) {
+	t.Run("can detect two app errors", func(t *testing.T) {
 		err := NewError("an error has occurred")
-		as := AsError(&applicationError{}, &err)
-		assert.True(t, as)
+		assert.True(t, AsError(err, &applicationError{}))
 	})
 }
 
