@@ -30,16 +30,17 @@ const (
 type applicationError struct {
 	code  int
 	cause error
+	stack error
 }
 
 // Error implements the error interface
 // it represents the message associated with the error
 func (e *applicationError) Error() string {
-	return e.cause.Error()
+	return e.stack.Error()
 }
 
 func (e *applicationError) Format(s fmt.State, verb rune) {
-	if fe, ok := e.cause.(fmt.Formatter); ok {
+	if fe, ok := e.stack.(fmt.Formatter); ok {
 		fe.Format(s, verb)
 	}
 }
@@ -55,7 +56,7 @@ func Error(err error) error {
 	}
 
 	if ae, ok := err.(*applicationError); ok {
-		return newApplicationError(err, ae.code)
+		return ae
 	}
 
 	return newApplicationError(err, http.StatusInternalServerError)
@@ -108,11 +109,25 @@ func AsError(err error, target interface{}) bool {
 		recover()
 	}()
 
-	return errors.As(err, target)
+	ae, aok := err.(*applicationError)
+	if aok {
+		err = ae.cause
+	}
+
+	te, tok := target.(*applicationError)
+	if tok {
+		target = te.cause
+	}
+
+	return (aok && tok) || errors.As(err, target)
 }
 
 // IsError finds first error in chain matching target.
 func IsError(err error, target error) bool {
+	if ae, ok := err.(*applicationError); ok {
+		err = ae.cause
+	}
+
 	return errors.Is(err, target)
 }
 
@@ -306,7 +321,8 @@ func Init(conf MonitorConfig) error {
 // newApplicationError creates an error with a given code and stack trace.
 func newApplicationError(err error, code int) error {
 	ae := &applicationError{
-		cause: errors.WithStack(err),
+		cause: err,
+		stack: errors.WithStack(err),
 		code:  code,
 	}
 
