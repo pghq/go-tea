@@ -1,7 +1,6 @@
 package tea
 
 import (
-	"context"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -73,7 +72,6 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Log(context.TODO(), "test", len(middlewares))
 	for _, m := range middlewares {
 		handler = m.Handle(handler)
 	}

@@ -1,12 +1,11 @@
 package tea
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -18,12 +17,6 @@ var (
 
 	// exit is the function that is called on fatal log
 	exit func(int)
-
-	// buf for testing
-	buf bytes.Buffer
-
-	// mu logging mutex for concurrent testing
-	mu sync.RWMutex
 )
 
 func init() {
@@ -33,33 +26,17 @@ func init() {
 
 // Testing configures logging for testing
 func Testing() {
-	mu.Lock()
-	defer mu.Unlock()
 	exit = func(int) {}
-	buf.Reset()
-	logger.zerolog = logger.zerolog.Output(&buf)
-}
-
-// Out gets the test output
-func Out() string {
-	mu.Lock()
-	defer mu.Unlock()
-	defer buf.Reset()
-	return buf.String()
+	logger.zerolog = logger.zerolog.Output(io.Discard)
 }
 
 // Verbosity gets the global log verbosity
 func Verbosity() string {
-	mu.RLock()
-	defer mu.RUnlock()
 	return logger.level
 }
 
 // SetVerbosity sets the global log level
 func SetVerbosity(level string) {
-	mu.Lock()
-	defer mu.Unlock()
-
 	level = strings.ToLower(level)
 	switch strings.ToLower(level) {
 	case "trace":
