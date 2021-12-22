@@ -12,7 +12,6 @@ import (
 
 // Router is an instance of a mux based Router
 type Router struct {
-	version     *version.Version
 	mux         *mux.Router
 	middlewares []Middleware
 }
@@ -20,14 +19,7 @@ type Router struct {
 // Route adds a handler for the path
 func (r *Router) Route(method, endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) {
 	s := r.mux.Methods(method, "OPTIONS").Subrouter()
-	router := r
-	s.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-		span := Start(r.Context(), "http")
-		defer span.End()
-		span.SetRequest(r)
-		span.SetVersion(router.version)
-		handlerFunc(w, r.WithContext(span))
-	})
+	s.HandleFunc(endpoint, handlerFunc)
 	for _, m := range append(r.middlewares, middlewares...) {
 		s.Use(m.Handle)
 	}
@@ -61,16 +53,16 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // NewRouter constructs a new mux based Router
 func NewRouter(semver string) *Router {
 	r := Router{mux: mux.NewRouter().StrictSlash(true)}
-	r.version, _ = version.NewVersion(semver)
-	if r.version != nil {
-		r.mux = r.mux.PathPrefix(fmt.Sprintf("/v%d", r.version.Segments()[0])).Subrouter()
+	v, _ := version.NewVersion(semver)
+	if v != nil {
+		r.mux = r.mux.PathPrefix(fmt.Sprintf("/v%d", v.Segments()[0])).Subrouter()
 	}
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
 	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
 		Send(w, r, health.NewService(semver).Status())
 	})
-	r.Middleware(Trace())
+	r.Middleware(Trace(v))
 	return &r
 }
 

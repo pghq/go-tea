@@ -6,6 +6,22 @@ import (
 	"testing"
 )
 
+func TestNest(t *testing.T) {
+	t.Parallel()
+
+	t.Run("without span parent", func(t *testing.T) {
+		child := Nest(context.TODO(), "child")
+		defer child.End()
+	})
+
+	t.Run("with span parent", func(t *testing.T) {
+		parent := Start(context.TODO(), "parent")
+		defer parent.End()
+		child := Nest(parent, "child")
+		defer child.End()
+	})
+}
+
 func TestSpan_Recover(t *testing.T) {
 	t.Parallel()
 

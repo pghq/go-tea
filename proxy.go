@@ -15,7 +15,6 @@ import (
 
 // Proxy is a multi-host reverse proxy
 type Proxy struct {
-	version     *version.Version
 	directors   map[string]*httputil.ReverseProxy
 	base        []Middleware
 	middlewares []Middleware
@@ -59,13 +58,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case r.URL.Path == "/health/status":
 		handler = p.health
 	case present:
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			span := Start(r.Context(), "http")
-			defer span.End()
-			span.SetRequest(r)
-			span.SetVersion(p.version)
-			director.ServeHTTP(w, r.WithContext(span))
-		})
+		handler = director
 		middlewares = append(middlewares, p.middlewares...)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -81,14 +74,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // NewProxy creates a new multi-host reverse proxy
 func NewProxy(semver string) *Proxy {
+	v, _ := version.NewVersion(semver)
 	p := Proxy{
 		directors: make(map[string]*httputil.ReverseProxy),
-		base:      []Middleware{Trace(), CORS()},
+		base:      []Middleware{Trace(v), CORS()},
 		health: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			Send(w, r, health.NewService(semver).Status())
 		}),
 	}
-
-	p.version, _ = version.NewVersion(semver)
 	return &p
 }
