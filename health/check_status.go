@@ -5,6 +5,9 @@ const (
 	UptimeCheckKey = "uptime"
 )
 
+// Status is a nice name representing the state of the application
+type Status string
+
 // StatusResponse is the response for the health check status API
 type StatusResponse struct {
 	Version string              `json:"version"`
@@ -21,7 +24,7 @@ func (s *StatusResponse) WithCheck(key string, check *Check) *StatusResponse {
 
 // Status is an API endpoint that presents the health of the current application
 // https://tools.ietf.org/id/draft-inadarei-api-health-check-05.html
-func (s *CheckService) Status() *StatusResponse {
+func (s Service) Status() *StatusResponse {
 	status := StatusResponse{
 		Version: s.version,
 		Checks:  make(map[string][]*Check),

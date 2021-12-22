@@ -15,59 +15,20 @@ package health
 
 import (
 	"time"
-
-	"github.com/pghq/go-tea/internal"
 )
 
-const (
-	// StatusHealthy represents a healthy application state
-	StatusHealthy Status = "healthy"
-)
-
-// Status is a nice name representing the state of the application
-type Status string
-
-// Check is an object representing health of an app component
-type Check struct {
-	Time   time.Time   `json:"time"`
-	Status Status      `json:"status,omitempty"`
-	Value  interface{} `json:"observedValue"`
-	Unit   string      `json:"observedUnit"`
-}
-
-// Client allows interfacing with various health services within the application
-type Client struct {
-	common service
-
-	Checks *CheckService
-}
-
-// service is a shared service for all health services
-type service struct {
-	clock   internal.Clock
+// Service is a shared service for all health services
+type Service struct {
+	now     func() time.Time
+	start   time.Time
 	version string
 }
 
-// NewClient creates a new health client instance
-func NewClient(version string, clock internal.Clock) *Client {
-	c := &Client{}
-
-	c.common.version = version
-	c.common.clock = clock
-
-	c.Checks = (*CheckService)(&c.common)
-
-	return c
-}
-
-// NewHealthyCheck creates a check, denoting it as unhealthy
-func NewHealthyCheck(observedAt time.Time, value interface{}, unit string) *Check {
-	c := &Check{
-		Time:   observedAt,
-		Status: StatusHealthy,
-		Value:  value,
-		Unit:   unit,
+// NewService creates a new health client instance
+func NewService(version string) Service {
+	return Service{
+		version: version,
+		now:     time.Now,
+		start:   time.Now(),
 	}
-
-	return c
 }

@@ -2,48 +2,103 @@ package tea
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
+	"github.com/klauspost/compress/zstd"
+	"github.com/rs/cors"
 )
 
 const (
-	// maxUploadSize is the max http body size that can be sent to the app (~16 MB)
-	maxUploadSize = 16 << 20
-
-	// defaultQueryLimit is the default query limit.
-	defaultQueryLimit = 25
-
-	// maxQueryLimit is the max query limit.
-	maxQueryLimit = 100
+	// maxUploadSize is the max http body size that can be sent to the app (~64 MB)
+	maxUploadSize = 64 << 20
 )
 
-// decoder is a global request decoder.
-var decoder = NewDecoder()
+var (
+	// enc is a global request encoder.
+	enc Encoder
+
+	// dec is a global request decoder.
+	dec Decoder
+)
+
+func init() {
+	enc = defaultEncoder()
+	dec = defaultDecoder()
+}
+
+// Encoder for requests
+type Encoder struct {
+	schema *schema.Encoder
+	ztsd   *zstd.Encoder
+}
+
+// defaultEncoder creates a new request encoder
+func defaultEncoder() Encoder {
+	enc := Encoder{schema: schema.NewEncoder()}
+	enc.ztsd, _ = zstd.NewWriter(nil)
+	return enc
+}
+
+// Attach a compressed header
+// commonly used for sending messages between internal services
+func Attach(r *http.Request, k, v interface{}) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return Stack(err)
+	}
+
+	r.Header.Add(fmt.Sprintf("%s", k), string(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
+	return nil
+}
 
 // Decoder is an instance of a http request decoder
 type Decoder struct {
 	schema *schema.Decoder
+	ztsd   *zstd.Decoder
 }
 
-// Decode decodes an http request to a value
-func (d *Decoder) Decode(r *http.Request, v interface{}) error {
-	d.schema.IgnoreUnknownKeys(true)
-	d.schema.ZeroEmpty(true)
-	d.schema.SetAliasTag("json")
+// defaultDecoder creates a request decoder with sane defaults.
+func defaultDecoder() Decoder {
+	dec := Decoder{schema: schema.NewDecoder()}
+	dec.schema.ZeroEmpty(true)
+	dec.schema.SetAliasTag("json")
+	dec.ztsd, _ = zstd.NewReader(nil)
+	return dec
+}
 
-	// Query parameters and path parameters get decoded
-	if err := d.schema.Decode(v, r.URL.Query()); err != nil {
-		return Error(err)
+// Detach a compressed header
+func Detach(r *http.Request, k, v interface{}) error {
+	b, err := dec.ztsd.DecodeAll([]byte(r.Header.Get(fmt.Sprintf("%s", k))), nil)
+	if err != nil {
+		return AsErrBadRequest(err)
+	}
+
+	if err := json.Unmarshal(b, v); err != nil {
+		return AsErrBadRequest(err)
+	}
+
+	return nil
+}
+
+// ParseURL is a method to decode a http request query and path into a value
+// schema struct tags are supported
+//
+// Query parameters and path parameters get decoded
+func ParseURL(r *http.Request, v interface{}) error {
+	if v == nil {
+		return Err("no value")
+	}
+
+	if err := dec.schema.Decode(v, r.URL.Query()); err != nil {
+		return AsErrBadRequest(err)
 	}
 
 	// path returns a map of parameters within the path
@@ -57,70 +112,18 @@ func (d *Decoder) Decode(r *http.Request, v interface{}) error {
 		return parameters
 	}
 
-	if err := d.schema.Decode(v, path(r)); err != nil {
-		return Error(err)
+	if err := dec.schema.Decode(v, path(r)); err != nil {
+		return AsErrBadRequest(err)
 	}
 
 	return nil
 }
 
-// NewDecoder creates a request decoder with sane defaults.
-func NewDecoder() *Decoder {
-	return &Decoder{
-		schema: schema.NewDecoder(),
-	}
-}
-
-// CurrentDecoder gets an instance of the global request decoder
-func CurrentDecoder() *Decoder {
-	return decoder
-}
-
-// Request is an instance of a http request
-type Request struct {
-	query interface{}
-	body  interface{}
-}
-
-// Query sets the query to decode to
-func (r *Request) Query(v interface{}) *Request {
-	r.query = v
-	return r
-}
-
-// Body sets the body to decode to
-func (r *Request) Body(v interface{}) *Request {
-	r.body = v
-	return r
-}
-
-// Decode the request
-func (r *Request) Decode(w http.ResponseWriter, req *http.Request) error {
-	if r.query != nil {
-		if err := DecodeURL(req, r.query); err != nil {
-			return Error(err)
-		}
-	}
-
-	if r.body != nil {
-		if err := DecodeBody(w, req, r.body); err != nil {
-			return Error(err)
-		}
-	}
-
-	return nil
-}
-
-// NewRequest creates an instance of a http request
-func NewRequest() *Request {
-	return &Request{}
-}
-
-// DecodeBody is a method to decode a http request body into a value
+// Parse is a method to decode a http request body into a value
 // JSON and schema struct tags are supported
-func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
+func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if v == nil {
-		return NewError("value must be defined")
+		return Err("no value")
 	}
 
 	if r.Body == http.NoBody {
@@ -129,7 +132,7 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return BadRequest(err)
+		return AsErrBadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -140,20 +143,20 @@ func DecodeBody(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return BadRequest(err)
+			return AsErrBadRequest(err)
 		}
 	default:
-		return NewBadRequest("content type not supported")
+		return ErrBadRequest("content type not supported")
 	}
 
 	return nil
 }
 
-// MultipartPart reads a multipart by name from a http request and leaves the body intact
-func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
+// Part reads a multipart message by name from a http request and leaves the body intact
+func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return nil, BadRequest(err)
+		return nil, AsErrBadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -162,17 +165,17 @@ func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multip
 		r.Body = body
 		r.MultipartForm = nil
 	}()
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return nil, BadRequest(err)
+		return nil, AsErrBadRequest(err)
 	}
 
 	for {
 		part, err := reader.NextPart()
 		if err != nil {
-			return nil, BadRequest(err)
+			return nil, AsErrBadRequest(err)
 		}
 
 		if part.FormName() == name {
@@ -181,84 +184,16 @@ func MultipartPart(w http.ResponseWriter, r *http.Request, name string) (*multip
 	}
 }
 
-// DecodeURL is a method to decode a http request query and path into a value
-// schema struct tags are supported
-func DecodeURL(r *http.Request, v interface{}) error {
-	if v == nil {
-		return NewError("value must be defined")
-	}
-
-	rd := CurrentDecoder()
-	if err := rd.Decode(r, v); err != nil {
-		return BadRequest(err)
-	}
-
-	return nil
-}
-
-// Authorization reads and parses the authorization header
+// Auth reads and parses the authorization header
 // from the request if provided
-func Authorization(r *http.Request) (string, string) {
+func Auth(r *http.Request) string {
 	auth := strings.Split(r.Header.Get("Authorization"), " ")
 
 	if len(auth) != 2 {
-		return "", ""
+		return ""
 	}
 
-	return auth[0], auth[1]
-}
-
-// Page gets the first and after queries for pagination
-func Page(r *http.Request) (int, *time.Time, error) {
-	first, err := First(r)
-	if err != nil {
-		return 0, nil, Error(err)
-	}
-
-	after, err := After(r)
-	if err != nil {
-		return 0, nil, Error(err)
-	}
-
-	return first, after, nil
-}
-
-// First gets the first query for pagination
-func First(r *http.Request) (int, error) {
-	if f := r.URL.Query().Get("first"); f != "" {
-		first, err := strconv.ParseInt(f, 10, 64)
-		if err != nil {
-			return 0, BadRequest(err)
-		}
-
-		if first > maxQueryLimit {
-			return 0, NewBadRequest("too many results desired")
-		}
-
-		return int(first), nil
-	}
-
-	return defaultQueryLimit, nil
-}
-
-// After gets the after query for pagination
-func After(r *http.Request) (*time.Time, error) {
-	if a := r.URL.Query().Get("after"); a != "" {
-		ds, err := base64.StdEncoding.DecodeString(a)
-		if err != nil {
-			return nil, BadRequest(err)
-		}
-
-		after, err := time.Parse(time.RFC3339Nano, string(ds))
-		if err != nil {
-			return nil, BadRequest(err)
-		}
-
-		return &after, nil
-	}
-
-	return &time.Time{}, nil
-
+	return auth[1]
 }
 
 // Accepts checks whether the response type is accepted
@@ -277,4 +212,32 @@ func Accepts(r *http.Request, contentType string) bool {
 	}
 
 	return false
+}
+
+// CORSMiddleware is an implementation of the CORS middleware
+// providing method, origin, and credential allowance
+type CORSMiddleware struct{ cors *cors.Cors }
+
+// Handle provides an http handler for handling CORS
+func (m CORSMiddleware) Handle(next http.Handler) http.Handler {
+	return m.cors.Handler(next)
+}
+
+// CORS constructs a new middleware that handles CORS
+func CORS() CORSMiddleware {
+	return CORSMiddleware{
+		cors: cors.New(cors.Options{
+			AllowedOrigins:   nil,
+			AllowCredentials: true,
+			AllowedMethods: []string{
+				http.MethodOptions,
+				http.MethodHead,
+				http.MethodGet,
+				http.MethodPost,
+				http.MethodDelete,
+				http.MethodPut,
+			},
+			AllowedHeaders: []string{"*"},
+		}),
+	}
 }

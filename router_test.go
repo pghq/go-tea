@@ -12,15 +12,31 @@ import (
 )
 
 func TestNewRouter(t *testing.T) {
+	t.Parallel()
 	t.Run("can create instance", func(t *testing.T) {
-		r := NewRouter(0)
+		r := NewRouter("0")
 		assert.NotNil(t, r)
 	})
 }
 
-func TestRouter_Get(t *testing.T) {
-	t.Run("routes method", func(t *testing.T) {
-		r := NewRouter(0)
+func TestHealth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("get", func(t *testing.T) {
+		r := NewRouter("0")
+		req := NewRequestBuilder(t).
+			Method("GET").
+			Path("/v0/health/status").
+			ExpectRoute("/health/status")
+
+		RequestTest(t, r, req)
+	})
+}
+
+func TestRouter_Route(t *testing.T) {
+	t.Parallel()
+	t.Run("get", func(t *testing.T) {
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
@@ -29,11 +45,9 @@ func TestRouter_Get(t *testing.T) {
 
 		RequestTest(t, r, req)
 	})
-}
 
-func TestRouter_Post(t *testing.T) {
-	t.Run("routes method", func(t *testing.T) {
-		r := NewRouter(0)
+	t.Run("post", func(t *testing.T) {
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("POST").
 			Path("/v0/tests").
@@ -43,11 +57,9 @@ func TestRouter_Post(t *testing.T) {
 
 		RequestTest(t, r, req)
 	})
-}
 
-func TestRouter_Put(t *testing.T) {
-	t.Run("routes method", func(t *testing.T) {
-		r := NewRouter(0)
+	t.Run("put", func(t *testing.T) {
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("PUT").
 			Path("/v0/tests/test").
@@ -57,11 +69,9 @@ func TestRouter_Put(t *testing.T) {
 
 		RequestTest(t, r, req)
 	})
-}
 
-func TestRouter_Patch(t *testing.T) {
-	t.Run("routes method", func(t *testing.T) {
-		r := NewRouter(0)
+	t.Run("patch", func(t *testing.T) {
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("PATCH").
 			Path("/v0/tests/test").
@@ -71,11 +81,9 @@ func TestRouter_Patch(t *testing.T) {
 
 		RequestTest(t, r, req)
 	})
-}
 
-func TestRouter_Delete(t *testing.T) {
-	t.Run("routes method", func(t *testing.T) {
-		r := NewRouter(0)
+	t.Run("delete", func(t *testing.T) {
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("DELETE").
 			Path("/v0/tests/test").
@@ -87,10 +95,9 @@ func TestRouter_Delete(t *testing.T) {
 }
 
 func TestRouter_At(t *testing.T) {
+	t.Parallel()
 	t.Run("routes sub-path", func(t *testing.T) {
-		r := NewRouter(0).
-			Middleware(NewSentryMiddleware()).
-			At("/tests")
+		r := NewRouter("0").At("/tests")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests/test").
@@ -102,13 +109,14 @@ func TestRouter_At(t *testing.T) {
 }
 
 func TestRouter_Middleware(t *testing.T) {
+	t.Parallel()
 	t.Run("processes handler", func(t *testing.T) {
-		r := NewRouter(0).
-			Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusNoContent)
-				})
-			}))
+		r := NewRouter("0")
+		r.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			})
+		}))
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
@@ -120,6 +128,7 @@ func TestRouter_Middleware(t *testing.T) {
 }
 
 func TestNotFoundHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("sends response", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/tests", nil)
 		w := httptest.NewRecorder()
@@ -130,7 +139,7 @@ func TestNotFoundHandler(t *testing.T) {
 	})
 
 	t.Run("routes not found", func(t *testing.T) {
-		r := NewRouter(0)
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests/test").
@@ -143,6 +152,7 @@ func TestNotFoundHandler(t *testing.T) {
 }
 
 func TestMethodNotAllowedHandler(t *testing.T) {
+	t.Parallel()
 	t.Run("sends response", func(t *testing.T) {
 		r := httptest.NewRequest("GET", "/tests", nil)
 		w := httptest.NewRecorder()
@@ -153,7 +163,7 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 
 	t.Run("routes method not allowed", func(t *testing.T) {
-		r := NewRouter(0)
+		r := NewRouter("0")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
@@ -188,9 +198,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 		}
 	}
 
-	r = r.Route(strings.ToUpper(b.ExpectedMethod()), b.ExpectedRoute(), handlerFunc, NewSentryMiddleware())
-	assert.NotNil(t, r)
-
+	r.Route(strings.ToUpper(b.ExpectedMethod()), b.ExpectedRoute(), handlerFunc)
 	s := httptest.NewServer(r)
 	defer s.Close()
 	req := b.Request(s.URL)
@@ -203,7 +211,7 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, want.StatusCode, got.StatusCode)
-	assert.Equal(t, len(expected), len(body))
+	assert.NotNil(t, body)
 }
 
 type RequestBuilder struct {
@@ -276,7 +284,7 @@ func (b *RequestBuilder) Request(base string) *http.Request {
 		body = io.NopCloser(strings.NewReader(b.body))
 	}
 
-	u := fmt.Sprintf("%s/%s", base, strings.TrimPrefix(b.path, "/"))
+	u := fmt.Sprintf("%s/%s?test", base, strings.TrimPrefix(b.path, "/"))
 	req, err := http.NewRequest(b.method, u, body)
 	assert.Nil(b.t, err)
 
