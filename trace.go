@@ -19,7 +19,7 @@ import (
 
 const (
 	// TraceVersion is instrumentation tracing version
-	TraceVersion = "0.0.1"
+	TraceVersion = "0.0.2"
 )
 
 // tracer global tracer for open telemetry instrumentation
@@ -99,7 +99,7 @@ func (s Span) Capture(err error) {
 
 // Tag sets an attribute value
 func (s Span) Tag(key interface{}, v ...interface{}) {
-	if s.IsTracing() {
+	if s.IsTracing() && len(v) > 0 {
 		key, value := fmt.Sprintf("%s", key), fmt.Sprint(v...)
 		s.otel.SetAttributes(attribute.String(key, value))
 		s.sentry.SetTag(key, value)
@@ -130,19 +130,36 @@ func (s Span) sentryHub() *sentry.Hub {
 	return hub
 }
 
-//Start is a named context providing a trace span
+// Start is a named context providing a trace span
 func Start(ctx context.Context, name string) Span {
 	s := Span{Context: ctx}
 	if Verbosity() == "trace" {
 		s.Context, s.otel = tracer.otel.Start(ctx, name)
 		s.sentry = sentry.StartSpan(s.Context, name)
 	}
+
+	return s
+}
+
+// Nest creates a named child trace
+func Nest(ctx context.Context, name string) Span {
+	s, _ := ctx.(Span)
+	if s.Context == nil {
+		s.Context = ctx
+	}
+
+	if s.IsTracing() {
+		s.Context, s.otel = tracer.otel.Start(ctx, name)
+		s.sentry = sentry.StartSpan(s.Context, name)
+	}
+
 	return s
 }
 
 // TraceMiddleware is an implementation of the sentry middleware
 type TraceMiddleware struct {
-	sentry *sentryhttp.Handler
+	version *version.Version
+	sentry  *sentryhttp.Handler
 }
 
 // Handle provides an http handler for handling exceptions
@@ -157,6 +174,7 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 		span := Start(ctx, "http")
 		defer span.End()
 		span.SetRequest(r)
+		span.SetVersion(m.version)
 		r = r.WithContext(span)
 		hub.Scope().SetRequest(r)
 		next.ServeHTTP(w, r)
@@ -164,8 +182,9 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 }
 
 // Trace constructs a new middleware that handles exceptions
-func Trace() TraceMiddleware {
+func Trace(version *version.Version) TraceMiddleware {
 	return TraceMiddleware{
-		sentry: sentryhttp.New(sentryhttp.Options{}),
+		version: version,
+		sentry:  sentryhttp.New(sentryhttp.Options{}),
 	}
 }
