@@ -1,135 +1,84 @@
 package tea
 
 import (
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"time"
 )
 
-// Response is the http response
-type Response struct {
-	header   http.Header
-	body     interface{}
-	status   int
-	cachedAt time.Time
-	cursor   *time.Time
-}
-
 // Send sends an HTTP response based on content type and body
-func (r *Response) Send(w http.ResponseWriter, req *http.Request) {
-	if r == nil || r.body == nil {
+func Send(w http.ResponseWriter, r *http.Request, raw interface{}) {
+	if raw == nil {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	headers := w.Header()
-	for k, v := range r.Headers(w, req) {
-		headers[k] = v
-	}
-
-	bytes, ct, err := r.Bytes(req)
+	body, content, err := Body(r, raw)
 	if err != nil {
-		SendHTTP(w, req, err)
+		SendError(w, r, err)
 		return
 	}
 
-	if ct != "" {
-		headers.Set("Content-Type", ct)
+	if content != "" {
+		w.Header().Set("Content-Type", content)
 	}
 
-	w.WriteHeader(r.status)
-	_, _ = w.Write(bytes)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
-// Body sets the response body
-func (r *Response) Body(body interface{}) *Response {
-	r.body = body
-	return r
-}
-
-// Status sets the http status code
-func (r *Response) Status(code int) *Response {
-	r.status = code
-
-	return r
-}
-
-// Cached adds a cache time to the response
-func (r *Response) Cached(at time.Time) *Response {
-	r.cachedAt = at
-
-	return r
-}
-
-// Cursor adds a cursor to the response
-func (r *Response) Cursor(cursor *time.Time) *Response {
-	r.cursor = cursor
-
-	return r
-}
-
-// Header sets http response headers
-func (r *Response) Header(header http.Header) *Response {
-	r.header = header
-
-	return r
-}
-
-// Headers gets the http response headers
-func (r *Response) Headers(w http.ResponseWriter, req *http.Request) http.Header {
-	header := w.Header().Clone()
-	for k, v := range r.header {
-		header[k] = v
+// SendError replies to the request with an error
+// and emits fatal http errors to global log and monitor.
+func SendError(w http.ResponseWriter, r *http.Request, err error) {
+	if err == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 
-	if r.cursor != nil && !r.cursor.IsZero() {
-		ds := r.cursor.Format(time.RFC3339Nano)
-		link := req.URL
-		query := link.Query()
-		query.Set("after", base64.StdEncoding.EncodeToString([]byte(ds)))
-		link.RawQuery = query.Encode()
-		header.Add("Link", fmt.Sprintf("<%s>", link.String()))
+	msg := err.Error()
+	status := ErrStatus(err)
+	if IsFatal(err) {
+		span := Start(r.Context(), "http")
+		defer span.End()
+		span.Tag("status", status)
+		span.SetRequest(r)
+		span.Capture(err)
+		msg = http.StatusText(status)
 	}
 
-	if !r.cachedAt.IsZero() {
-		header.Add("Cached-At", r.cachedAt.Format(time.RFC3339Nano))
-	}
-
-	return header
+	http.Error(w, msg, status)
 }
 
-// Bytes gets the response as bytes based on origin
-func (r *Response) Bytes(req *http.Request) ([]byte, string, error) {
-	if Accepts(req, "*/*") {
-		if body, ok := r.body.([]byte); ok {
+// SendNotAuthorized sends a not authorized error
+func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error, force ...bool) {
+	if (len(force) == 0 || !force[0]) && IsFatal(err) {
+		SendError(w, r, err)
+		return
+	}
+
+	SendError(w, r, AsErrTransfer(http.StatusUnauthorized, err))
+}
+
+// Body gets the response body as bytes based on origin
+func Body(r *http.Request, body interface{}) ([]byte, string, error) {
+	if Accepts(r, "*/*") {
+		if body, ok := body.([]byte); ok {
 			return body, "", nil
 		}
 
-		if body, ok := r.body.(string); ok {
+		if body, ok := body.(string); ok {
 			return []byte(body), "", nil
 		}
 	}
 
 	switch {
-	case Accepts(req, "application/json"):
-		bytes, err := json.Marshal(r.body)
+	case Accepts(r, "application/json"):
+		bytes, err := json.Marshal(body)
 		if err != nil {
-			return nil, "", Error(err)
+			return nil, "", Stack(err)
 		}
 
 		return bytes, "application/json", nil
 	}
 
-	return nil, "", NewBadRequest("unsupported content type")
-}
-
-// NewResponse creates a new response to be sent
-func NewResponse() *Response {
-	r := Response{
-		status: http.StatusOK,
-	}
-
-	return &r
+	return nil, "", ErrBadRequest("unsupported content type")
 }

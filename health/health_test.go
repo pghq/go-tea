@@ -5,21 +5,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pghq/go-tea/internal/clock"
 )
 
-func TestNew(t *testing.T) {
+func TestNewService(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		client := NewClient("0.0.1", nil)
-		assert.NotNil(t, client)
-	})
-}
-
-func TestClient_Handler(t *testing.T) {
-	t.Run("can create handler instance", func(t *testing.T) {
-		client := NewClient("0.0.1", nil)
-		assert.NotNil(t, client)
+		s := NewService("0.0.1")
+		assert.NotNil(t, s)
 	})
 }
 
@@ -59,13 +50,13 @@ func TestCheckService_Status(t *testing.T) {
 	})
 }
 
-func TestHandler_Status(t *testing.T) {
+func TestService_Status(t *testing.T) {
 	t.Run("handles status requests", func(t *testing.T) {
 		now := time.Now()
-		client := NewClient("0.0.1", clock.New(now).From(func() time.Time {
-			return now
-		}))
-		resp := client.Checks.Status()
+		s := NewService("0.0.1")
+		s.now = func() time.Time { return now }
+		s.start = now
+		resp := s.Status()
 		assert.Equal(t, "0.0.1", resp.Version)
 		assert.Equal(t, StatusHealthy, resp.Status)
 		assert.Equal(t, map[string][]*Check{"uptime": {{

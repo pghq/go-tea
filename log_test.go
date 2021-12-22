@@ -1,81 +1,64 @@
 package tea
 
 import (
-	"bytes"
-	"strings"
+	"context"
 	"testing"
-
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestDebug(t *testing.T) {
-	t.Run("logs message", func(t *testing.T) {
-		SetGlobalLogLevel("debug")
-		defer ResetGlobalLogger()
-		var buf bytes.Buffer
-		SetGlobalLogWriter(&buf)
-		logger := Logf("debug", "%+v", errors.WithStack(errors.New("a log message")))
-		assert.NotNil(t, logger)
-		assert.Contains(t, buf.String(), "debug")
-		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
-		assert.Contains(t, buf.String(), "time")
+func init() {
+	defer SetVerbosity("trace")
+	SetVerbosity("debug")
+	SetVerbosity("info")
+	SetVerbosity("warn")
+	SetVerbosity("error")
+	SetVerbosity("fatal")
+	SetVerbosity("unknown")
+}
 
-		buf.Reset()
-		SetGlobalLogWriter(&buf)
-		Log("debug", errors.WithStack(errors.New("a log message")))
-		assert.Contains(t, buf.String(), "debug")
-		assert.Contains(t, buf.String(), "time")
+func TestLogf(t *testing.T) {
+	t.Parallel()
 
-		buf.Reset()
-		Debugf(&buf, "%+v", errors.WithStack(errors.New("a log message")))
-		assert.Contains(t, buf.String(), "debug")
-		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
-		assert.Contains(t, buf.String(), "time")
-
-		buf.Reset()
-		Debug(&buf, errors.WithStack(errors.New("a log message")))
-		assert.Contains(t, buf.String(), "debug")
-		assert.Contains(t, buf.String(), "time")
+	t.Run("ok", func(t *testing.T) {
+		Logf(context.TODO(), "info", "ok")
 	})
 }
 
-func TestInfo(t *testing.T) {
-	t.Run("logs message", func(t *testing.T) {
-		SetGlobalLogLevel("info")
-		defer ResetGlobalLogger()
-		var buf bytes.Buffer
-		SetGlobalLogWriter(&buf)
-		logger := Logf("info", "%+v", errors.WithStack(errors.New("a log message")))
-		assert.NotNil(t, logger)
-		assert.Contains(t, buf.String(), "info")
-		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
-		assert.Contains(t, buf.String(), "time")
+func TestLog(t *testing.T) {
+	t.Parallel()
 
-		buf.Reset()
-		SetGlobalLogWriter(&buf)
-		Log("info", errors.WithStack(errors.New("a log message")))
-		assert.Contains(t, buf.String(), "info")
-		assert.Contains(t, buf.String(), "time")
+	t.Run("debug", func(t *testing.T) {
+		Log(context.TODO(), "debug")
 	})
-}
 
-func TestWarn(t *testing.T) {
-	t.Run("logs message", func(t *testing.T) {
-		SetGlobalLogLevel("warn")
-		defer ResetGlobalLogger()
-		var buf bytes.Buffer
-		SetGlobalLogWriter(&buf)
-		logger := Logf("warn", "%+v", errors.WithStack(errors.New("a log message")))
-		assert.NotNil(t, logger)
-		assert.Contains(t, buf.String(), "warn")
-		assert.Less(t, 1, strings.Count(buf.String(), "\\n"))
-		assert.Contains(t, buf.String(), "time")
+	t.Run("info", func(t *testing.T) {
+		Log(context.TODO(), "info")
+	})
 
-		buf.Reset()
-		SetGlobalLogWriter(&buf)
-		Log("warn", errors.WithStack(errors.New("a log message")))
-		assert.Contains(t, buf.String(), "warn")
-		assert.Contains(t, buf.String(), "time")
+	t.Run("warn", func(t *testing.T) {
+		Log(context.TODO(), "warn")
+	})
+
+	t.Run("test", func(t *testing.T) {
+		Log(context.TODO(), "test")
+	})
+
+	t.Run("error:cast", func(t *testing.T) {
+		Log(context.TODO(), "error", Err())
+	})
+
+	t.Run("error:value param", func(t *testing.T) {
+		Log(context.TODO(), "error", "error")
+	})
+
+	t.Run("error:non fatal", func(t *testing.T) {
+		Log(context.TODO(), "error", ErrBadRequest())
+	})
+
+	t.Run("error:trace", func(t *testing.T) {
+		Log(context.TODO(), "error", ErrBadRequest())
+	})
+
+	t.Run("error:fatal", func(t *testing.T) {
+		Log(context.TODO(), "fatal", Err())
 	})
 }
