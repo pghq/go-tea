@@ -59,8 +59,10 @@ func NewRouter(semver string) *Router {
 	}
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
+
+	hc := health.NewService(semver)
 	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
-		Send(w, r, health.NewService(semver).Status())
+		Send(w, r, hc.Status())
 	})
 	r.Middleware(Trace(v))
 	return &r
