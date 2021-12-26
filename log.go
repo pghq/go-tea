@@ -89,7 +89,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 		span := Start(ctx, level)
 		defer span.End()
 		span.Capture(err)
-		logger.zerolog.Error().Msg(fmt.Sprint(v...))
+		logger.zerolog.Error().Msgf("%+v", err)
 		if level == "fatal" {
 			Flush()
 			exit(1)
