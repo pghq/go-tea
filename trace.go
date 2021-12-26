@@ -17,11 +17,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const (
-	// TraceVersion is instrumentation tracing version
-	TraceVersion = "0.0.2"
-)
-
 // tracer global tracer for open telemetry instrumentation
 var tracer Tracer
 
@@ -29,7 +24,7 @@ func init() {
 	tracer = defaultTracer()
 	sentryOpts := sentry.ClientOptions{
 		AttachStacktrace: true,
-		Release:          TraceVersion,
+		Release:          Version,
 		Environment:      os.Getenv("APP_ENV"),
 	}
 	_ = sentry.Init(sentryOpts)
@@ -53,7 +48,7 @@ func Flush() {
 func defaultTracer() Tracer {
 	exporter, _ := stdouttrace.New()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(exporter))
-	return Tracer{provider: provider, otel: provider.Tracer("tea", trace.WithInstrumentationVersion(TraceVersion), trace.WithSchemaURL(semconv.SchemaURL))}
+	return Tracer{provider: provider, otel: provider.Tracer("tea", trace.WithInstrumentationVersion(Version), trace.WithSchemaURL(semconv.SchemaURL))}
 }
 
 // Span is a trace span
