@@ -32,7 +32,7 @@ func Testing() {
 
 // Verbosity gets the global log verbosity
 func Verbosity() string {
-	return logger.level
+	return logger.verbosity
 }
 
 // SetVerbosity sets the global log level
@@ -56,7 +56,7 @@ func SetVerbosity(level string) {
 		return
 	}
 
-	logger.level = level
+	logger.verbosity = level
 }
 
 // Log a series of values at a given level
@@ -104,8 +104,8 @@ func Logf(ctx context.Context, level, format string, args ...interface{}) {
 
 // Logger is an instance of the zerolog based Logger
 type Logger struct {
-	level   string
-	zerolog zerolog.Logger
+	verbosity string
+	zerolog   zerolog.Logger
 }
 
 // defaultLogger creates a Logger with sane defaults.
@@ -114,7 +114,7 @@ func defaultLogger() Logger {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	cw := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
 	return Logger{
-		zerolog: zerolog.New(cw).With().Timestamp().Logger().Level(zerolog.TraceLevel),
-		level:   "trace",
+		zerolog:   zerolog.New(cw).With().Timestamp().Logger().Level(zerolog.InfoLevel),
+		verbosity: "trace",
 	}
 }
