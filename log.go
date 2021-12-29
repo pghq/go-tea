@@ -65,7 +65,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 	switch level {
 	case "test":
 		z := defaultLogger().zerolog
-		z.Print(fmt.Sprint(v...))
+		z.Info().Msg(fmt.Sprint(v...))
 	case "debug":
 		logger.zerolog.Debug().Msg(fmt.Sprint(v...))
 	case "info":
