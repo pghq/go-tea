@@ -149,6 +149,17 @@ func TestNotFoundHandler(t *testing.T) {
 
 		RequestTest(t, r, req)
 	})
+
+	t.Run("health check", func(t *testing.T) {
+		r := NewRouter("0")
+		req := NewRequestBuilder(t).
+			Method("GET").
+			Path("/health/status").
+			ExpectRoute("/health/status").
+			ExpectStatus(http.StatusOK)
+
+		RequestTest(t, r, req)
+	})
 }
 
 func TestMethodNotAllowedHandler(t *testing.T) {
