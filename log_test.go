@@ -27,19 +27,19 @@ func TestLog(t *testing.T) {
 	t.Parallel()
 
 	t.Run("debug", func(t *testing.T) {
-		Log(context.TODO(), "debug")
+		Log(context.TODO(), "debug", "error")
 	})
 
 	t.Run("info", func(t *testing.T) {
-		Log(context.TODO(), "info")
+		Log(context.TODO(), "info", "error")
 	})
 
 	t.Run("warn", func(t *testing.T) {
-		Log(context.TODO(), "warn")
+		Log(context.TODO(), "warn", "error")
 	})
 
 	t.Run("test", func(t *testing.T) {
-		Log(context.TODO(), "test")
+		Log(context.TODO(), "test", "error")
 	})
 
 	t.Run("error:cast", func(t *testing.T) {
@@ -60,5 +60,9 @@ func TestLog(t *testing.T) {
 
 	t.Run("error:fatal", func(t *testing.T) {
 		Log(context.TODO(), "fatal", Err())
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		Log(context.TODO(), "fatal", nil)
 	})
 }
