@@ -53,17 +53,17 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // NewRouter constructs a new mux based Router
 func NewRouter(semver string) *Router {
 	r := Router{mux: mux.NewRouter().StrictSlash(true)}
+	hc := health.NewService(semver)
+	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
+		Send(w, r, hc.Status())
+	})
+
 	v, _ := version.NewVersion(semver)
 	if v != nil {
 		r.mux = r.mux.PathPrefix(fmt.Sprintf("/v%d", v.Segments()[0])).Subrouter()
 	}
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
-
-	hc := health.NewService(semver)
-	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
-		Send(w, r, hc.Status())
-	})
 	r.Middleware(Trace(v))
 	return &r
 }
