@@ -77,8 +77,9 @@ func NewProxy(semver string) *Proxy {
 	v, _ := version.NewVersion(semver)
 	hc := health.NewService(semver)
 	p := Proxy{
-		directors: make(map[string]*httputil.ReverseProxy),
-		base:      []Middleware{Trace(v), CORS()},
+		directors:   make(map[string]*httputil.ReverseProxy),
+		base:        []Middleware{CORS()},
+		middlewares: []Middleware{Trace(v)},
 		health: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			Send(w, r, hc.Status())
 		}),
