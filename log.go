@@ -61,7 +61,7 @@ func SetVerbosity(level string) {
 
 // Log a series of values at a given level
 func Log(ctx context.Context, level string, v ...interface{}) {
-	if len(v) == 0 || v[0] == nil {
+	if ctx.Err() != nil || len(v) == 0 || v[0] == nil {
 		return
 	}
 
