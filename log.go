@@ -76,7 +76,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 		logger.zerolog.Info().Msg(fmt.Sprint(v...))
 	case "warn":
 		logger.zerolog.Warn().Msg(fmt.Sprint(v...))
-	case "error", "fatal", "trace":
+	case "error", "fatal", "trace", "capture":
 		var err error
 		if len(v) == 1 {
 			err, _ = v[0].(error)
@@ -90,9 +90,12 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 			return
 		}
 
-		span := Nest(ctx, level)
-		defer span.End()
-		span.Capture(err)
+		if level != "capture"{
+			span := Nest(ctx, level)
+			defer span.End()
+			span.Capture(err)
+		}
+
 		logger.zerolog.Error().Msgf("%+v", err)
 		if level == "fatal" {
 			Flush()
