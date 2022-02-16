@@ -89,6 +89,7 @@ func (s Span) Capture(err error) {
 		s.otel.RecordError(err)
 		hub := s.sentryHub()
 		hub.CaptureException(err)
+		Logf(s, "capture", "exception: %+v", err)
 	}
 }
 
@@ -109,6 +110,7 @@ func (s Span) End() {
 			hub.RecoverWithContext(s, err)
 			hub.Flush(5 * time.Second)
 			s.otel.RecordError(Err(err))
+			Logf(s, "capture", "exception: %+v", err)
 		}
 
 		s.otel.End(trace.WithStackTrace(true))
