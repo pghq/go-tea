@@ -2,8 +2,11 @@ package tea
 
 import (
 	"context"
+	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/hashicorp/go-version"
 )
 
 func TestNest(t *testing.T) {
@@ -26,9 +29,10 @@ func TestSpan_Recover(t *testing.T) {
 	t.Parallel()
 
 	t.Run("panic", func(t *testing.T) {
-		span := Start(context.TODO(), "panic")
-		defer span.End()
-		panic("panic")
+		m := Trace(&version.Version{})
+		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("panic")
+		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
 	})
 }
 

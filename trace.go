@@ -93,6 +93,15 @@ func (s Span) Capture(err error) {
 	}
 }
 
+// Recover from panics
+func (s Span) Recover(err interface{}){
+	hub := s.sentryHub()
+	hub.RecoverWithContext(s, err)
+	hub.Flush(5 * time.Second)
+	s.otel.RecordError(Err(err))
+	Logf(s, "capture", "caught panic: %+v", err)
+}
+
 // Tag sets an attribute value
 func (s Span) Tag(key interface{}, v ...interface{}) {
 	if s.IsTracing() && len(v) > 0 {
@@ -105,14 +114,6 @@ func (s Span) Tag(key interface{}, v ...interface{}) {
 // End a span
 func (s Span) End() {
 	if s.IsTracing() {
-		if err := recover(); err != nil {
-			hub := s.sentryHub()
-			hub.RecoverWithContext(s, err)
-			hub.Flush(5 * time.Second)
-			s.otel.RecordError(Err(err))
-			Logf(s, "capture", "exception: %+v", err)
-		}
-
 		s.otel.End(trace.WithStackTrace(true))
 		s.sentry.Finish()
 	}
@@ -169,6 +170,12 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 		span := Start(ctx, "http")
+		defer func(){
+			if err := recover(); err != nil {
+				span.Recover(err)
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}()
 		defer span.End()
 		span.SetRequest(r)
 		span.SetVersion(m.version)
