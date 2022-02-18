@@ -90,7 +90,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 			return
 		}
 
-		if level != "capture"{
+		if level != "capture" {
 			span := Nest(ctx, level)
 			defer span.End()
 			span.Capture(err)
