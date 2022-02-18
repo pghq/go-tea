@@ -127,13 +127,13 @@ func TestAttach(t *testing.T) {
 
 	data := map[string][]string{"permissions": {"read:foo"}}
 	t.Run("encodes", func(t *testing.T) {
-		r := httptest.NewRequest("", "/test", nil)
-		assert.Nil(t, Attach(r, "data", &data))
+		w := httptest.NewRecorder()
+		assert.Nil(t, Attach(w, "data", &data))
 	})
 
 	t.Run("bad data", func(t *testing.T) {
-		r := httptest.NewRequest("", "/test", nil)
-		assert.NotNil(t, Attach(r, "data", func() {}))
+		w := httptest.NewRecorder()
+		assert.NotNil(t, Attach(w, "data", func() {}))
 	})
 }
 
@@ -142,25 +142,25 @@ func TestDetach(t *testing.T) {
 
 	data := map[string][]string{"permissions": {"read:foo"}}
 	t.Run("encodes", func(t *testing.T) {
-		r := httptest.NewRequest("", "/test", nil)
-		assert.Nil(t, Attach(r, "data", &data))
+		w := httptest.NewRecorder()
+		assert.Nil(t, Attach(w, "data", &data))
 
 		var value map[string][]string
-		err := Detach(r, "data", &value)
+		err := Detach(w, "data", &value)
 		assert.Nil(t, err)
 		assert.NotNil(t, value)
 		assert.Equal(t, &value, &data)
 	})
 
 	t.Run("missing header", func(t *testing.T) {
-		r := httptest.NewRequest("", "/test", nil)
-		assert.NotNil(t, Detach(r, "data", nil))
+		w := httptest.NewRecorder()
+		assert.NotNil(t, Detach(w, "data", nil))
 	})
 
 	t.Run("bad key", func(t *testing.T) {
-		r := httptest.NewRequest("", "/test", nil)
-		r.Header.Set("data", fmt.Sprintf("%d", ^uint(0)))
-		assert.NotNil(t, Detach(r, "data", nil))
+		w := httptest.NewRecorder()
+		w.Header().Set("data", fmt.Sprintf("%d", ^uint(0)))
+		assert.NotNil(t, Detach(w, "data", nil))
 	})
 }
 

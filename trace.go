@@ -94,7 +94,7 @@ func (s Span) Capture(err error) {
 }
 
 // Recover from panics
-func (s Span) Recover(err interface{}){
+func (s Span) Recover(err interface{}) {
 	hub := s.sentryHub()
 	hub.RecoverWithContext(s, err)
 	hub.Flush(5 * time.Second)
@@ -170,7 +170,7 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 		span := Start(ctx, "http")
-		defer func(){
+		defer func() {
 			if err := recover(); err != nil {
 				span.Recover(err)
 				w.WriteHeader(http.StatusInternalServerError)

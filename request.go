@@ -49,13 +49,13 @@ func defaultEncoder() Encoder {
 
 // Attach a compressed header
 // commonly used for sending messages between internal services
-func Attach(r *http.Request, k, v interface{}) error {
+func Attach(w http.ResponseWriter, k, v interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return Stack(err)
 	}
 
-	r.Header.Add(fmt.Sprintf("%s", k), string(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
+	w.Header().Set(fmt.Sprintf("%s", k), string(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
 	return nil
 }
 
@@ -75,8 +75,8 @@ func defaultDecoder() Decoder {
 }
 
 // Detach a compressed header
-func Detach(r *http.Request, k, v interface{}) error {
-	b, err := dec.ztsd.DecodeAll([]byte(r.Header.Get(fmt.Sprintf("%s", k))), nil)
+func Detach(w http.ResponseWriter, k, v interface{}) error {
+	b, err := dec.ztsd.DecodeAll([]byte(w.Header().Get(fmt.Sprintf("%s", k))), nil)
 	if err != nil {
 		return AsErrBadRequest(err)
 	}
