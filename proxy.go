@@ -75,7 +75,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // NewProxy creates a new multi-host reverse proxy
 func NewProxy(semver string) *Proxy {
 	v, _ := version.NewVersion(semver)
-	hc := health.NewService(semver)
+	cv := semver
+	if v != nil{
+		cv = v.String()
+	}
+
+	hc := health.NewService(cv)
 	p := Proxy{
 		directors:   make(map[string]*httputil.ReverseProxy),
 		base:        []Middleware{CORS()},
