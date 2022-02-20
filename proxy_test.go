@@ -26,7 +26,7 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("health check", func(t *testing.T) {
-		p := NewProxy("")
+		p := NewProxy("0.0.1")
 		r := httptest.NewRequest("", "/health/status", nil)
 		w := httptest.NewRecorder()
 		p.ServeHTTP(w, r)
