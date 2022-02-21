@@ -2,6 +2,7 @@ package tea
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -55,7 +56,7 @@ func Attach(w http.ResponseWriter, k, v interface{}) error {
 		return Stack(err)
 	}
 
-	w.Header().Set(fmt.Sprintf("%s", k), string(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
+	w.Header().Set(fmt.Sprintf("%s", k), base64.StdEncoding.EncodeToString(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
 	return nil
 }
 
@@ -76,7 +77,8 @@ func defaultDecoder() Decoder {
 
 // Detach a compressed header
 func Detach(w http.ResponseWriter, k, v interface{}) error {
-	b, err := dec.ztsd.DecodeAll([]byte(w.Header().Get(fmt.Sprintf("%s", k))), nil)
+	b, _ := base64.StdEncoding.DecodeString(w.Header().Get(fmt.Sprintf("%s", k)))
+	b, err := dec.ztsd.DecodeAll(b, nil)
 	if err != nil {
 		return AsErrBadRequest(err)
 	}
