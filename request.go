@@ -237,6 +237,7 @@ func CORS() CORSMiddleware {
 				http.MethodGet,
 				http.MethodPost,
 				http.MethodDelete,
+				http.MethodPatch,
 				http.MethodPut,
 			},
 			AllowedHeaders: []string{"*"},
