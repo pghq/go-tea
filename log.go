@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	logger = defaultLogger()
+	logger = NewLogger()
 	exit = os.Exit
 }
 
@@ -58,8 +58,8 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 	level = strings.ToLower(level)
 	switch level {
 	case "test":
-		log := defaultLogger().zap
-		log.Info(fmt.Sprint(v...))
+		logger := NewLogger()
+		logger.zap.Info(fmt.Sprint(v...))
 	case "debug":
 		logger.zap.Debug(fmt.Sprint(v...))
 	case "info":
@@ -105,8 +105,20 @@ type Logger struct {
 	atom zap.AtomicLevel
 }
 
-// defaultLogger creates a Logger with sane defaults.
-func defaultLogger() Logger {
+func (l Logger) Error(err interface{}) {
+	l.zap.Error(fmt.Sprintf("%+v", err))
+}
+
+func (l Logger) Tag(k, v string) {
+	l.zap = l.zap.With(zap.String(k, v))
+}
+
+func (l Logger) Flush() {
+	_ = l.zap.Sync()
+}
+
+// NewLogger creates a Logger with sane defaults.
+func NewLogger() Logger {
 	atom := zap.NewAtomicLevel()
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.RFC3339NanoTimeEncoder

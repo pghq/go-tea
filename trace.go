@@ -24,12 +24,14 @@ func init() {
 // Flush any pending batched
 func Flush() {
 	sentry.Flush(5 * time.Second)
+	logger.Flush()
 }
 
 // Span is a trace span
 type Span struct {
 	context.Context
 	sentry *sentry.Span
+	logs   Logger
 }
 
 // IsTracing checks if the span has tracing enabled
@@ -62,7 +64,7 @@ func (s Span) Capture(err error) {
 	if s.IsTracing() && IsFatal(err) {
 		hub := s.sentryHub()
 		hub.CaptureException(err)
-		Logf(s, "capture", "exception: %+v", err)
+		s.logs.Error(err)
 	}
 }
 
@@ -71,7 +73,7 @@ func (s Span) Recover(err interface{}) {
 	hub := s.sentryHub()
 	hub.RecoverWithContext(s, err)
 	hub.Flush(5 * time.Second)
-	Logf(s, "capture", "caught panic: %+v", err)
+	s.logs.Error(err)
 }
 
 // Tag sets an attribute value
@@ -79,6 +81,7 @@ func (s Span) Tag(key interface{}, v ...interface{}) {
 	if s.IsTracing() && len(v) > 0 {
 		key, value := fmt.Sprintf("%s", key), fmt.Sprint(v...)
 		s.sentry.SetTag(key, value)
+		s.logs.Tag(key, value)
 	}
 }
 
@@ -86,6 +89,7 @@ func (s Span) Tag(key interface{}, v ...interface{}) {
 func (s Span) End() {
 	if s.IsTracing() {
 		s.sentry.Finish()
+		s.logs.Flush()
 	}
 }
 
@@ -100,7 +104,7 @@ func (s Span) sentryHub() *sentry.Hub {
 
 // Start is a named context providing a trace span
 func Start(ctx context.Context, name string) Span {
-	s := Span{Context: ctx}
+	s := Span{Context: ctx, logs: NewLogger()}
 	s.sentry = sentry.StartSpan(s.Context, name)
 	return s
 }
