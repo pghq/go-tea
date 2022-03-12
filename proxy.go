@@ -32,7 +32,7 @@ func (p *Proxy) Direct(root, host string) error {
 	root = strings.Trim(root, string(os.PathSeparator))
 	hostURL, err := url.ParseRequestURI(host)
 	if err != nil {
-		return Stack(err)
+		return Stacktrace(err)
 	}
 	p.directors[root] = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
@@ -76,7 +76,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func NewProxy(semver string) *Proxy {
 	v, _ := version.NewVersion(semver)
 	cv := semver
-	if v != nil{
+	if v != nil {
 		cv = v.String()
 	}
 

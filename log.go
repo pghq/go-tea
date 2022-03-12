@@ -3,12 +3,11 @@ package tea
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/rs/zerolog"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -27,36 +26,27 @@ func init() {
 // Testing configures logging for testing
 func Testing() {
 	exit = func(int) {}
-	logger.zerolog = logger.zerolog.Output(io.Discard)
-}
-
-// Verbosity gets the global log verbosity
-func Verbosity() string {
-	return logger.verbosity
+	logger.zap = zap.NewNop()
 }
 
 // SetVerbosity sets the global log level
 func SetVerbosity(level string) {
 	level = strings.ToLower(level)
 	switch strings.ToLower(level) {
-	case "trace":
-		logger.zerolog = logger.zerolog.Level(zerolog.TraceLevel)
 	case "debug":
-		logger.zerolog = logger.zerolog.Level(zerolog.DebugLevel)
+		logger.atom.SetLevel(zap.DebugLevel)
 	case "info":
-		logger.zerolog = logger.zerolog.Level(zerolog.InfoLevel)
+		logger.atom.SetLevel(zap.InfoLevel)
 	case "warn":
-		logger.zerolog = logger.zerolog.Level(zerolog.WarnLevel)
+		logger.atom.SetLevel(zap.WarnLevel)
 	case "error":
-		logger.zerolog = logger.zerolog.Level(zerolog.ErrorLevel)
+		logger.atom.SetLevel(zap.ErrorLevel)
 	case "fatal":
-		logger.zerolog = logger.zerolog.Level(zerolog.FatalLevel)
+		logger.atom.SetLevel(zap.FatalLevel)
 	default:
-		logger.zerolog = logger.zerolog.Level(zerolog.NoLevel)
+		logger.atom.SetLevel(zap.DebugLevel)
 		return
 	}
-
-	logger.verbosity = level
 }
 
 // Log a series of values at a given level
@@ -68,14 +58,14 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 	level = strings.ToLower(level)
 	switch level {
 	case "test":
-		z := defaultLogger().zerolog
-		z.Info().Msg(fmt.Sprint(v...))
+		log := defaultLogger().zap
+		log.Info(fmt.Sprint(v...))
 	case "debug":
-		logger.zerolog.Debug().Msg(fmt.Sprint(v...))
+		logger.zap.Debug(fmt.Sprint(v...))
 	case "info":
-		logger.zerolog.Info().Msg(fmt.Sprint(v...))
+		logger.zap.Info(fmt.Sprint(v...))
 	case "warn":
-		logger.zerolog.Warn().Msg(fmt.Sprint(v...))
+		logger.zap.Warn(fmt.Sprint(v...))
 	case "error", "fatal", "trace", "capture":
 		var err error
 		if len(v) == 1 {
@@ -96,7 +86,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 			span.Capture(err)
 		}
 
-		logger.zerolog.Error().Msgf("%+v", err)
+		logger.zap.Error(fmt.Sprintf("%+v", err))
 		if level == "fatal" {
 			Flush()
 			exit(1)
@@ -111,17 +101,19 @@ func Logf(ctx context.Context, level, format string, args ...interface{}) {
 
 // Logger is an instance of the zerolog based Logger
 type Logger struct {
-	verbosity string
-	zerolog   zerolog.Logger
+	zap  *zap.Logger
+	atom zap.AtomicLevel
 }
 
 // defaultLogger creates a Logger with sane defaults.
 func defaultLogger() Logger {
-	// https://github.com/rs/zerolog/issues/213
-	zerolog.TimeFieldFormat = time.RFC3339Nano
-	cw := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
+	atom := zap.NewAtomicLevel()
+	config := zap.NewProductionEncoderConfig()
+	config.EncodeTime = zapcore.RFC3339NanoTimeEncoder
+	config.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLogger := zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(config), zapcore.Lock(os.Stdout), atom))
 	return Logger{
-		zerolog:   zerolog.New(cw).With().Timestamp().Logger().Level(zerolog.InfoLevel),
-		verbosity: "trace",
+		zap:  zapLogger,
+		atom: atom,
 	}
 }

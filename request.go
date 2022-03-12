@@ -53,7 +53,7 @@ func defaultEncoder() Encoder {
 func Attach(w http.ResponseWriter, k, v interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return Stack(err)
+		return Stacktrace(err)
 	}
 
 	w.Header().Set(fmt.Sprintf("%s", k), base64.StdEncoding.EncodeToString(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
