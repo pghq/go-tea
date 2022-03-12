@@ -13,7 +13,6 @@ type stacktrace struct {
 	code  int
 	cause error
 	stack error
-	msg   []interface{}
 }
 
 // Error implements the error interface
