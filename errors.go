@@ -13,6 +13,7 @@ type stacktrace struct {
 	code  int
 	cause error
 	stack error
+	msg   []interface{}
 }
 
 // Error implements the error interface
@@ -27,8 +28,8 @@ func (e *stacktrace) Format(s fmt.State, verb rune) {
 	}
 }
 
-// Stack adds stacktrace to an error
-func Stack(err error) error {
+// Stacktrace adds stacktrace to an error
+func Stacktrace(err error) error {
 	if IsError(err, context.Canceled) {
 		return stack(err, http.StatusBadRequest)
 	}
@@ -46,7 +47,7 @@ func Stack(err error) error {
 
 // Err creates an internal error from an error message
 func Err(v ...interface{}) error {
-	return Stack(errors.New(fmt.Sprint(v...)))
+	return Stacktrace(errors.New(fmt.Sprint(v...)))
 }
 
 // Errf creates an internal error from a formatted error message

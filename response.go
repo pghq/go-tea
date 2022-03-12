@@ -74,7 +74,7 @@ func Body(r *http.Request, body interface{}) ([]byte, string, error) {
 	case Accepts(r, "application/json"):
 		bytes, err := json.Marshal(body)
 		if err != nil {
-			return nil, "", Stack(err)
+			return nil, "", Stacktrace(err)
 		}
 
 		return bytes, "application/json", nil
