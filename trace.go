@@ -73,7 +73,7 @@ func (s Span) Recover(err interface{}) {
 	hub := s.sentryHub()
 	hub.RecoverWithContext(s, err)
 	hub.Flush(5 * time.Second)
-	s.logs.Error(err)
+	s.logs.ErrorWithStacktrace(err)
 }
 
 // Tag sets an attribute value
