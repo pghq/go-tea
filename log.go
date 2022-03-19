@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"go.uber.org/zap"
@@ -107,6 +108,10 @@ type Logger struct {
 
 func (l Logger) Error(err interface{}) {
 	l.zap.Error(fmt.Sprintf("%+v", err))
+}
+
+func (l Logger) ErrorWithStacktrace(err interface{}) {
+	l.zap.Error(fmt.Sprintf("%+v\n%s", err, string(debug.Stack())))
 }
 
 func (l Logger) Tag(k, v string) {
