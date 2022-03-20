@@ -61,9 +61,11 @@ func (s Span) SetRequest(r *http.Request) {
 
 // Capture sets an error for the span
 func (s Span) Capture(err error) {
-	if s.IsTracing() && IsFatal(err) {
-		hub := s.sentryHub()
-		hub.CaptureException(err)
+	if IsFatal(err) {
+		if s.IsTracing(){
+			hub := s.sentryHub()
+			hub.CaptureException(err)
+		}
 		s.logs.Error(err)
 	}
 }
