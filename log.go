@@ -67,7 +67,7 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 		logger.zap.Info(fmt.Sprint(v...))
 	case "warn":
 		logger.zap.Warn(fmt.Sprint(v...))
-	case "error", "fatal", "trace", "capture":
+	case "error", "fatal":
 		var err error
 		if len(v) == 1 {
 			err, _ = v[0].(error)
@@ -81,13 +81,10 @@ func Log(ctx context.Context, level string, v ...interface{}) {
 			return
 		}
 
-		if level != "capture" {
-			span := Nest(ctx, level)
-			defer span.End()
-			span.Capture(err)
-		}
+		span := Nest(ctx, level)
+		defer span.End()
+		span.Capture(err)
 
-		logger.zap.Error(fmt.Sprintf("%+v", err))
 		if level == "fatal" {
 			Flush()
 			exit(1)
