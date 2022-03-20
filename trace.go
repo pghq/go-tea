@@ -31,7 +31,7 @@ func Flush() {
 type Span struct {
 	context.Context
 	sentry *sentry.Span
-	logs   Logger
+	logs   *Logger
 }
 
 // IsTracing checks if the span has tracing enabled
@@ -116,6 +116,7 @@ func Nest(ctx context.Context, name string) Span {
 	s, _ := ctx.(Span)
 	if s.Context == nil {
 		s.Context = ctx
+		s.logs = NewLogger()
 	}
 
 	if s.IsTracing() {
