@@ -13,7 +13,7 @@ import (
 
 var (
 	// logger is the global logger
-	logger Logger
+	logger *Logger
 
 	// exit is the function that is called on fatal log
 	exit func(int)
@@ -120,13 +120,13 @@ func (l Logger) Flush() {
 }
 
 // NewLogger creates a Logger with sane defaults.
-func NewLogger() Logger {
+func NewLogger() *Logger {
 	atom := zap.NewAtomicLevel()
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.RFC3339NanoTimeEncoder
 	config.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	zapLogger := zap.New(zapcore.NewCore(zapcore.NewConsoleEncoder(config), zapcore.Lock(os.Stdout), atom))
-	return Logger{
+	return &Logger{
 		zap:  zapLogger,
 		atom: atom,
 	}
