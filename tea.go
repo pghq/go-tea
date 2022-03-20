@@ -2,5 +2,5 @@ package tea
 
 const (
 	// Version of the library
-	Version = "0.0.56"
+	Version = "0.0.57"
 )
