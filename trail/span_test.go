@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/google/uuid"
 )
 
@@ -31,6 +33,17 @@ func TestSpan_Capture(t *testing.T) {
 	t.Run("with request", func(t *testing.T) {
 		span := StartSpan(context.TODO(), "request", WithSpanRequest(httptest.NewRequest("", "/test", nil)))
 		span.Capture(NewError("a message"))
+	})
+}
+
+func TestSpan_SetField(t *testing.T) {
+	t.Parallel()
+
+	t.Run("can set and get", func(t *testing.T) {
+		span := StartSpan(context.TODO(), "test")
+		defer span.Finish()
+		span.Fields.Set("key", "value")
+		assert.Equal(t, "value", span.Fields.Get("key"))
 	})
 }
 

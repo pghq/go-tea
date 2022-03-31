@@ -2,6 +2,7 @@ package trail
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
@@ -31,15 +32,33 @@ const maxSpans = 1000
 // spanContextKey is the expected context key for spans
 type spanContextKey struct{}
 
+// Fields for custom data
+type Fields map[string]interface{}
+
+// Set a field
+func (f *Fields) Set(key string, value interface{}) {
+	if f == nil || *f == nil {
+		*f = make(map[string]interface{})
+	}
+
+	data := *f
+	data[key] = value
+}
+
+// Get a field by key
+func (f Fields) Get(key string) interface{} {
+	field, _ := f[key]
+	return field
+}
+
 // Span for tracing instrumentation
 type Span struct {
-	SpanId    uuid.UUID              `json:"spanId"`
-	ParentId  uuid.UUID              `json:"parentId"`
-	Scope     string                 `json:"scope"`
-	StartTime time.Time              `json:"startTime"`
-	EndTime   time.Time              `json:"endTime"`
-	Tags      map[string]string      `json:"tags,omitempty"`
-	Data      map[string]interface{} `json:"data,omitempty"`
+	SpanId    uuid.UUID `json:"spanId"`
+	ParentId  uuid.UUID `json:"parentId"`
+	Scope     string    `json:"scope"`
+	StartTime time.Time `json:"startTime"`
+	EndTime   time.Time `json:"endTime"`
+	Fields    Fields    `json:"fields,omitempty"`
 
 	ip        net.IP
 	requestId uuid.UUID
@@ -57,16 +76,6 @@ type Span struct {
 // Context gets the original context of the span
 func (s *Span) Context() context.Context {
 	return s.ctx
-}
-
-// Tag sets a tagged string value
-func (s *Span) Tag(name, value string) {
-	if s.Tags == nil {
-		s.Tags = make(map[string]string)
-	}
-
-	s.Tags[name] = value
-	s.sentry.SetTag(name, value)
 }
 
 // Capture sets an error for the span
@@ -102,6 +111,10 @@ func (s *Span) Finish() {
 
 // sentryHub gets the closest matching hub to the span or defaults to current hub
 func (s *Span) sentryHub() *sentry.Hub {
+	for k, value := range s.Fields {
+		s.sentry.SetTag(k, fmt.Sprintf("%s", value))
+	}
+
 	hub := sentry.GetHubFromContext(s.Context())
 	if hub == nil {
 		hub = sentry.CurrentHub().Clone()
@@ -155,7 +168,7 @@ func WithSpanRequest(r *http.Request) SpanOption {
 		span.ip = net.ParseIP(r.Header.Get("X-Forwarded-For"))
 		span.userAgent = r.UserAgent()
 		span.url = r.URL
-		span.Tag("request.id", requestId.String())
+		span.Fields.Set("request.id", requestId.String())
 		span.sentryHub().Scope().SetRequest(r)
 		r.Header.Set("Request-Id", requestId.String())
 	}
@@ -172,7 +185,7 @@ func WithSpanWriter(w SpanWriter) SpanOption {
 func WithSpanVersion(version string) SpanOption {
 	return func(span *Span) {
 		span.version = version
-		span.Tag("app.version", version)
+		span.Fields.Set("app.version", version)
 	}
 }
 

@@ -43,7 +43,7 @@ func SendError(w http.ResponseWriter, r *http.Request, err error) {
 	msg := err.Error()
 	status := trail.StatusCode(err)
 
-	span.Tag("error", msg)
+	span.Fields.Set("error", msg)
 	if trail.IsFatal(err) {
 		span.Capture(err)
 		msg = http.StatusText(status)
