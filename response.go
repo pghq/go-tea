@@ -2,7 +2,10 @@ package tea
 
 import (
 	"encoding/json"
+
 	"net/http"
+
+	"github.com/pghq/go-tea/trail"
 )
 
 // Send sends an HTTP response based on content type and body
@@ -34,13 +37,14 @@ func SendError(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 
+	span := trail.StartSpan(r.Context(), "http.error")
+	defer span.Finish()
+
 	msg := err.Error()
-	status := ErrStatus(err)
-	if IsFatal(err) {
-		span := Start(r.Context(), "http")
-		defer span.End()
-		span.Tag("status", status)
-		span.SetRequest(r)
+	status := trail.StatusCode(err)
+
+	span.Tag("error", msg)
+	if trail.IsFatal(err) {
 		span.Capture(err)
 		msg = http.StatusText(status)
 	}
@@ -50,12 +54,12 @@ func SendError(w http.ResponseWriter, r *http.Request, err error) {
 
 // SendNotAuthorized sends a not authorized error
 func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error, force ...bool) {
-	if (len(force) == 0 || !force[0]) && IsFatal(err) {
+	if (len(force) == 0 || !force[0]) && trail.IsFatal(err) {
 		SendError(w, r, err)
 		return
 	}
 
-	SendError(w, r, AsErrTransfer(http.StatusUnauthorized, err))
+	SendError(w, r, trail.NewErrorWithCode(err.Error(), http.StatusUnauthorized))
 }
 
 // Body gets the response body as bytes based on origin
@@ -74,11 +78,11 @@ func Body(r *http.Request, body interface{}) ([]byte, string, error) {
 	case Accepts(r, "application/json"):
 		bytes, err := json.Marshal(body)
 		if err != nil {
-			return nil, "", Stacktrace(err)
+			return nil, "", trail.Stacktrace(err)
 		}
 
 		return bytes, "application/json", nil
 	}
 
-	return nil, "", ErrBadRequest("unsupported content type")
+	return nil, "", trail.NewErrorBadRequest("unsupported content type")
 }

@@ -12,13 +12,13 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	t.Parallel()
 
 	t.Run("bad host", func(t *testing.T) {
-		p := NewProxy("")
+		p := NewProxy("", nil)
 		err := p.Direct("", "")
 		assert.NotNil(t, err)
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		p := NewProxy("")
+		p := NewProxy("", nil)
 		r := httptest.NewRequest("", "/", nil)
 		w := httptest.NewRecorder()
 		p.ServeHTTP(w, r)
@@ -26,7 +26,7 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("health check", func(t *testing.T) {
-		p := NewProxy("0.0.1")
+		p := NewProxy("0.0.1", nil)
 		r := httptest.NewRequest("", "/health/status", nil)
 		w := httptest.NewRecorder()
 		p.ServeHTTP(w, r)
@@ -36,7 +36,7 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	t.Run("director", func(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 		defer s.Close()
-		p := NewProxy("")
+		p := NewProxy("", nil)
 		p.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				r.Header.Add("Test", "1")

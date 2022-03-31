@@ -1,4 +1,4 @@
-package tea
+package trail
 
 import (
 	"context"
@@ -14,7 +14,7 @@ func TestStack(t *testing.T) {
 	t.Parallel()
 
 	t.Run("adds stacktrace to application errors", func(t *testing.T) {
-		err := Stacktrace(Err("an error has occurred"))
+		err := Stacktrace(NewError("an error has occurred"))
 		assert.NotNil(t, err)
 		assert.Less(t, 1, strings.Count(fmt.Sprintf("%+v", err), "\n"))
 		assert.Contains(t, err.Error(), "an error has occurred")
@@ -40,15 +40,15 @@ func TestErrf(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ok", func(t *testing.T) {
-		assert.NotNil(t, Errf("%s", "err"))
+		assert.NotNil(t, NewErrorf("%s", "err"))
 	})
 }
 
-func TestErrNoContent(t *testing.T) {
+func TestErrorNoContent(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ok", func(t *testing.T) {
-		assert.NotNil(t, AsErrNoContent(ErrNoContent()))
+		assert.True(t, IsNoContent(ErrorNoContent(NewErrorNoContent("a message"))))
 	})
 }
 
@@ -56,7 +56,7 @@ func TestErrNotFound(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ok", func(t *testing.T) {
-		assert.True(t, IsNotFound(AsErrNotFound(ErrNotFound())))
+		assert.True(t, IsNotFound(ErrorNotFound(NewErrorNotFound("a message"))))
 	})
 }
 
@@ -64,7 +64,23 @@ func TestErrBadRequest(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ok", func(t *testing.T) {
-		assert.True(t, IsBadRequest(AsErrBadRequest(ErrBadRequest())))
+		assert.True(t, IsBadRequest(ErrorBadRequest(NewErrorBadRequest("a message"))))
+	})
+}
+
+func TestErrorConflict(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ok", func(t *testing.T) {
+		assert.True(t, IsConflict(ErrorConflict(NewErrorConflict("a message"))))
+	})
+}
+
+func TestErrorTooManyRequests(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ok", func(t *testing.T) {
+		assert.True(t, IsTooManyRequests(ErrorTooManyRequests(NewErrorTooManyRequests("a message"))))
 	})
 }
 
@@ -72,7 +88,7 @@ func TestAsError(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ok", func(t *testing.T) {
-		assert.True(t, AsError(Err(), Err()))
+		assert.True(t, AsError(NewError("a message"), NewError("a message")))
 	})
 }
 
@@ -80,6 +96,6 @@ func TestErrStatus(t *testing.T) {
 	t.Parallel()
 
 	t.Run("unknown", func(t *testing.T) {
-		assert.Equal(t, 500, ErrStatus(errors.New("")))
+		assert.Equal(t, 500, StatusCode(errors.New("a message")))
 	})
 }

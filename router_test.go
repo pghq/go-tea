@@ -94,20 +94,6 @@ func TestRouter_Route(t *testing.T) {
 	})
 }
 
-func TestRouter_At(t *testing.T) {
-	t.Parallel()
-	t.Run("routes sub-path", func(t *testing.T) {
-		r := NewRouter("0").At("/tests")
-		req := NewRequestBuilder(t).
-			Method("GET").
-			Path("/v0/tests/test").
-			ExpectRoute("/test").
-			ExpectResponse("ok")
-
-		RequestTest(t, r, req)
-	})
-}
-
 func TestRouter_Middleware(t *testing.T) {
 	t.Parallel()
 	t.Run("processes handler", func(t *testing.T) {

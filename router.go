@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/go-version"
 
 	"github.com/pghq/go-tea/health"
+	"github.com/pghq/go-tea/trail"
 )
 
 // Router is an instance of a mux based Router
@@ -23,19 +24,6 @@ func (r *Router) Route(method, endpoint string, handlerFunc http.HandlerFunc, mi
 	s.HandleFunc(endpoint, handlerFunc)
 	for _, m := range append(r.middlewares, middlewares...) {
 		s.Use(m.Handle)
-	}
-}
-
-// At creates a sub-router for handling requests at a sub-path
-func (r *Router) At(path string) *Router {
-	s := r.routes.PathPrefix(path).Subrouter()
-	for _, m := range r.middlewares {
-		s.Use(m.Handle)
-	}
-
-	return &Router{
-		mux:    r.mux,
-		routes: r.routes.PathPrefix(path).Subrouter(),
 	}
 }
 
@@ -68,7 +56,7 @@ func NewRouter(semver string) *Router {
 	}
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
-	r.Middleware(Trace(v))
+	r.Middleware(trail.NewTraceMiddleware(v.String(), nil))
 	return &r
 }
 

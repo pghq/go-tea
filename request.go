@@ -2,9 +2,7 @@ package tea
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -13,8 +11,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-	"github.com/klauspost/compress/zstd"
 	"github.com/rs/cors"
+
+	"github.com/pghq/go-tea/trail"
 )
 
 const (
@@ -23,71 +22,14 @@ const (
 )
 
 var (
-	// enc is a global request encoder.
-	enc Encoder
-
 	// dec is a global request decoder.
-	dec Decoder
+	dec *schema.Decoder
 )
 
 func init() {
-	enc = defaultEncoder()
-	dec = defaultDecoder()
-}
-
-// Encoder for requests
-type Encoder struct {
-	schema *schema.Encoder
-	ztsd   *zstd.Encoder
-}
-
-// defaultEncoder creates a new request encoder
-func defaultEncoder() Encoder {
-	enc := Encoder{schema: schema.NewEncoder()}
-	enc.ztsd, _ = zstd.NewWriter(nil)
-	return enc
-}
-
-// Attach a compressed header
-// commonly used for sending messages between internal services
-func Attach(w http.ResponseWriter, k, v interface{}) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return Stacktrace(err)
-	}
-
-	w.Header().Set(fmt.Sprintf("%s", k), base64.StdEncoding.EncodeToString(enc.ztsd.EncodeAll(b, make([]byte, 0, len(b)))))
-	return nil
-}
-
-// Decoder is an instance of a http request decoder
-type Decoder struct {
-	schema *schema.Decoder
-	ztsd   *zstd.Decoder
-}
-
-// defaultDecoder creates a request decoder with sane defaults.
-func defaultDecoder() Decoder {
-	dec := Decoder{schema: schema.NewDecoder()}
-	dec.schema.ZeroEmpty(true)
-	dec.schema.SetAliasTag("json")
-	dec.ztsd, _ = zstd.NewReader(nil)
-	return dec
-}
-
-// Detach a compressed header
-func Detach(w http.ResponseWriter, k, v interface{}) error {
-	b, _ := base64.StdEncoding.DecodeString(w.Header().Get(fmt.Sprintf("%s", k)))
-	b, err := dec.ztsd.DecodeAll(b, nil)
-	if err != nil {
-		return AsErrBadRequest(err)
-	}
-
-	if err := json.Unmarshal(b, v); err != nil {
-		return AsErrBadRequest(err)
-	}
-
-	return nil
+	dec = schema.NewDecoder()
+	dec.ZeroEmpty(true)
+	dec.SetAliasTag("json")
 }
 
 // ParseURL is a method to decode a http request query and path into a value
@@ -96,11 +38,11 @@ func Detach(w http.ResponseWriter, k, v interface{}) error {
 // Query parameters and path parameters get decoded
 func ParseURL(r *http.Request, v interface{}) error {
 	if v == nil {
-		return Err("no value")
+		return trail.NewError("no value")
 	}
 
-	if err := dec.schema.Decode(v, r.URL.Query()); err != nil {
-		return AsErrBadRequest(err)
+	if err := dec.Decode(v, r.URL.Query()); err != nil {
+		return trail.ErrorBadRequest(err)
 	}
 
 	// path returns a map of parameters within the path
@@ -114,8 +56,8 @@ func ParseURL(r *http.Request, v interface{}) error {
 		return parameters
 	}
 
-	if err := dec.schema.Decode(v, path(r)); err != nil {
-		return AsErrBadRequest(err)
+	if err := dec.Decode(v, path(r)); err != nil {
+		return trail.ErrorBadRequest(err)
 	}
 
 	return nil
@@ -125,7 +67,7 @@ func ParseURL(r *http.Request, v interface{}) error {
 // JSON and schema struct tags are supported
 func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if v == nil {
-		return Err("no value")
+		return trail.NewError("no value")
 	}
 
 	if r.Body == http.NoBody {
@@ -134,7 +76,7 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return AsErrBadRequest(err)
+		return trail.ErrorBadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -145,10 +87,10 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return AsErrBadRequest(err)
+			return trail.ErrorBadRequest(err)
 		}
 	default:
-		return ErrBadRequest("content type not supported")
+		return trail.NewErrorBadRequest("content type not supported")
 	}
 
 	return nil
@@ -158,7 +100,7 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
-		return nil, AsErrBadRequest(err)
+		return nil, trail.ErrorBadRequest(err)
 	}
 
 	_ = r.Body.Close()
@@ -171,13 +113,13 @@ func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part,
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
 	reader, err := r.MultipartReader()
 	if err != nil {
-		return nil, AsErrBadRequest(err)
+		return nil, trail.ErrorBadRequest(err)
 	}
 
 	for {
 		part, err := reader.NextPart()
 		if err != nil {
-			return nil, AsErrBadRequest(err)
+			return nil, trail.ErrorBadRequest(err)
 		}
 
 		if part.FormName() == name {
@@ -225,8 +167,8 @@ func (m CORSMiddleware) Handle(next http.Handler) http.Handler {
 	return m.cors.Handler(next)
 }
 
-// CORS constructs a new middleware that handles CORS
-func CORS() CORSMiddleware {
+// NewCORSMiddleware constructs a new middleware that handles CORS
+func NewCORSMiddleware() CORSMiddleware {
 	return CORSMiddleware{
 		cors: cors.New(cors.Options{
 			AllowedOrigins:   nil,

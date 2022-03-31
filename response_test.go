@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pghq/go-tea/trail"
 )
 
 func TestSend(t *testing.T) {
@@ -74,10 +76,10 @@ func TestSendNotAuthorized(t *testing.T) {
 	t.Parallel()
 
 	t.Run("not unauthorized", func(t *testing.T) {
-		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), Err())
+		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), trail.NewError("a message"))
 	})
 
 	t.Run("unauthorized", func(t *testing.T) {
-		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), ErrBadRequest())
+		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), trail.NewErrorBadRequest("a message"))
 	})
 }

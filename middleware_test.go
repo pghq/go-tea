@@ -22,13 +22,13 @@ func TestMiddleware_Handle(t *testing.T) {
 
 func TestCORS(t *testing.T) {
 	t.Run("can create instance", func(t *testing.T) {
-		assert.NotNil(t, CORS())
+		assert.NotNil(t, NewCORSMiddleware())
 	})
 }
 
 func TestCORSMiddleware_Handle(t *testing.T) {
 	t.Run("handles cors for request with no origin", func(t *testing.T) {
-		m := CORS()
+		m := NewCORSMiddleware()
 		r := httptest.NewRequest("OPTIONS", "/tests", nil)
 		r.Header.Set("Origin", "https://tea.pghq.app")
 		w := httptest.NewRecorder()
@@ -41,7 +41,7 @@ func TestCORSMiddleware_Handle(t *testing.T) {
 	})
 
 	t.Run("handles cors for request with no matching origin", func(t *testing.T) {
-		m := CORS()
+		m := NewCORSMiddleware()
 		r := httptest.NewRequest("OPTIONS", "/tests", nil)
 		r.Header.Set("Origin", "https://test.site.tld")
 		r.Header.Set("Access-Control-Request-Method", "GET")

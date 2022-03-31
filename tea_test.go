@@ -3,9 +3,11 @@ package tea
 import (
 	"os"
 	"testing"
+
+	"github.com/pghq/go-tea/trail"
 )
 
 func TestMain(m *testing.M) {
-	Testing()
+	trail.Testing()
 	os.Exit(m.Run())
 }
