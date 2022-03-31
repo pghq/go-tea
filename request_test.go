@@ -2,14 +2,14 @@ package tea
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/iotest"
+
+	"github.com/pghq/go-tea/trail"
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -18,10 +18,10 @@ import (
 func TestPart(t *testing.T) {
 	t.Parallel()
 	t.Run("raises bad request body errors", func(t *testing.T) {
-		body := iotest.ErrReader(Err("an error has occurred"))
+		body := iotest.ErrReader(trail.NewError("an error has occurred"))
 		req := httptest.NewRequest("POST", "/tests", body)
 		_, err := Part(httptest.NewRecorder(), req, "test")
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("raises content type errors", func(t *testing.T) {
@@ -30,15 +30,15 @@ func TestPart(t *testing.T) {
 		}`)
 		req := httptest.NewRequest("POST", "/tests", body)
 		_, err := Part(httptest.NewRecorder(), req, "test")
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("raises not found errors", func(t *testing.T) {
 		body := new(bytes.Buffer)
 		mw := multipart.NewWriter(body)
-		mw.WriteField("foo", "test")
-		mw.WriteField("bar", "test")
-		mw.Close()
+		_ = mw.WriteField("foo", "test")
+		_ = mw.WriteField("bar", "test")
+		_ = mw.Close()
 
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", mw.FormDataContentType())
@@ -50,11 +50,11 @@ func TestPart(t *testing.T) {
 	t.Run("can get part", func(t *testing.T) {
 		body := new(bytes.Buffer)
 		mw := multipart.NewWriter(body)
-		mw.WriteField("foo", "test")
-		mw.WriteField("bar", "test")
+		_ = mw.WriteField("foo", "test")
+		_ = mw.WriteField("bar", "test")
 		mp, _ := mw.CreateFormFile("file", "file.csv")
-		mp.Write([]byte(`example`))
-		mw.Close()
+		_, _ = mp.Write([]byte(`example`))
+		_ = mw.Close()
 
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", mw.FormDataContentType())
@@ -122,55 +122,13 @@ func TestAccepts(t *testing.T) {
 	})
 }
 
-func TestAttach(t *testing.T) {
-	t.Parallel()
-
-	data := map[string][]string{"permissions": {"read:foo"}}
-	t.Run("encodes", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		assert.Nil(t, Attach(w, "data", &data))
-	})
-
-	t.Run("bad data", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		assert.NotNil(t, Attach(w, "data", func() {}))
-	})
-}
-
-func TestDetach(t *testing.T) {
-	t.Parallel()
-
-	data := map[string][]string{"permissions": {"read:foo"}}
-	t.Run("encodes", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		assert.Nil(t, Attach(w, "data", &data))
-
-		var value map[string][]string
-		err := Detach(w, "data", &value)
-		assert.Nil(t, err)
-		assert.NotNil(t, value)
-		assert.Equal(t, &value, &data)
-	})
-
-	t.Run("missing header", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		assert.NotNil(t, Detach(w, "data", nil))
-	})
-
-	t.Run("bad key", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		w.Header().Set("data", fmt.Sprintf("%d", ^uint(0)))
-		assert.NotNil(t, Detach(w, "data", nil))
-	})
-}
-
 func TestParse(t *testing.T) {
 	t.Parallel()
 
 	t.Run("raises nil value errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		err := Parse(httptest.NewRecorder(), req, nil)
-		assert.Equal(t, http.StatusInternalServerError, ErrStatus(err))
+		assert.True(t, trail.IsFatal(err))
 	})
 
 	t.Run("can send no content", func(t *testing.T) {
@@ -180,10 +138,10 @@ func TestParse(t *testing.T) {
 	})
 
 	t.Run("raises bad request body errors", func(t *testing.T) {
-		body := iotest.ErrReader(Err("an error has occurred"))
+		body := iotest.ErrReader(trail.NewError("an error has occurred"))
 		req := httptest.NewRequest("POST", "/tests", body)
 		err := Parse(httptest.NewRecorder(), req, &struct{}{})
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("raises JSON errors", func(t *testing.T) {
@@ -194,7 +152,7 @@ func TestParse(t *testing.T) {
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/json")
 		err := Parse(httptest.NewRecorder(), req, &value)
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("raises content type error", func(t *testing.T) {
@@ -205,7 +163,7 @@ func TestParse(t *testing.T) {
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", "application/bson")
 		err := Parse(httptest.NewRecorder(), req, &value)
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("can decode body", func(t *testing.T) {
@@ -240,7 +198,7 @@ func TestParseURL(t *testing.T) {
 	t.Run("raises nil query errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		err := ParseURL(req, nil)
-		assert.Equal(t, http.StatusInternalServerError, ErrStatus(err))
+		assert.True(t, trail.IsFatal(err))
 	})
 
 	t.Run("raises bad query errors", func(t *testing.T) {
@@ -250,7 +208,7 @@ func TestParseURL(t *testing.T) {
 
 		req := httptest.NewRequest("GET", "/tests?first=three", nil)
 		err := ParseURL(req, &query)
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 
 	t.Run("raises bad path errors", func(t *testing.T) {
@@ -261,6 +219,6 @@ func TestParseURL(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests/:test", nil)
 		req = mux.SetURLVars(req, map[string]string{"test": "one"})
 		err := ParseURL(req, &query)
-		assert.Equal(t, http.StatusBadRequest, ErrStatus(err))
+		assert.True(t, trail.IsBadRequest(err))
 	})
 }

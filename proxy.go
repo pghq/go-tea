@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-version"
 
 	"github.com/pghq/go-tea/health"
+	"github.com/pghq/go-tea/trail"
 )
 
 // Proxy is a multi-host reverse proxy
@@ -32,7 +33,7 @@ func (p *Proxy) Direct(root, host string) error {
 	root = strings.Trim(root, string(os.PathSeparator))
 	hostURL, err := url.ParseRequestURI(host)
 	if err != nil {
-		return Stacktrace(err)
+		return trail.Stacktrace(err)
 	}
 	p.directors[root] = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
@@ -73,7 +74,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewProxy creates a new multi-host reverse proxy
-func NewProxy(semver string) *Proxy {
+func NewProxy(semver string, collector trail.FiberCollectorFunc) *Proxy {
 	v, _ := version.NewVersion(semver)
 	cv := semver
 	if v != nil {
@@ -83,8 +84,8 @@ func NewProxy(semver string) *Proxy {
 	hc := health.NewService(cv)
 	p := Proxy{
 		directors:   make(map[string]*httputil.ReverseProxy),
-		base:        []Middleware{CORS()},
-		middlewares: []Middleware{Trace(v)},
+		base:        []Middleware{NewCORSMiddleware()},
+		middlewares: []Middleware{trail.NewTraceMiddleware(cv, collector)},
 		health: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			Send(w, r, hc.Status())
 		}),
