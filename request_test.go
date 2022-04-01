@@ -179,6 +179,45 @@ func TestParse(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, "test", value.Data)
 	})
+
+	t.Run("multipart", func(t *testing.T) {
+		body := new(bytes.Buffer)
+		mw := multipart.NewWriter(body)
+		_ = mw.WriteField("foo", "test")
+		_ = mw.WriteField("bar", "test")
+		mp, _ := mw.CreateFormFile("file", "file.csv")
+		_, _ = mp.Write([]byte(`example`))
+		_ = mw.Close()
+		req := httptest.NewRequest("POST", "/tests", body)
+		req.Header.Set("Content-Type", mw.FormDataContentType())
+
+		t.Run("not a struct", func(t *testing.T) {
+			var query int
+			err := Parse(httptest.NewRecorder(), req, &query)
+			assert.NotNil(t, err)
+		})
+
+		t.Run("missing part", func(t *testing.T) {
+			type avatarQuery struct {
+				Avatar io.Reader `form:"avatar"`
+			}
+
+			var query avatarQuery
+			err := Parse(httptest.NewRecorder(), req, &query)
+			assert.NotNil(t, err)
+		})
+
+		t.Run("ok", func(t *testing.T) {
+			type partQuery struct {
+				File io.Reader `form:"file"`
+			}
+
+			var query partQuery
+			err := Parse(httptest.NewRecorder(), req, &query)
+			assert.Nil(t, err)
+			assert.NotNil(t, query.File)
+		})
+	})
 }
 
 func TestParseURL(t *testing.T) {

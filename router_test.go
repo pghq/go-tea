@@ -1,12 +1,15 @@
 package tea
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/pghq/go-tea/trail"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -170,6 +173,107 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 			ExpectResponse(http.StatusText(http.StatusMethodNotAllowed))
 
 		RequestTest(t, r, req)
+	})
+}
+
+func TestHTTPCommand(t *testing.T) {
+	t.Run("parse body error", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/test", strings.NewReader(`{}`))
+
+		cmd := HTTPCommand(func(ctx context.Context, command int) error { return nil })
+		cmd.ServeHTTP(resp, req)
+
+		assert.Equal(t, 400, resp.Code)
+	})
+
+	t.Run("parse url error", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		type test struct {
+			Id int `json:"id"`
+		}
+
+		cmd := HTTPCommand(func(ctx context.Context, command test) error { return nil })
+		cmd.ServeHTTP(resp, req)
+
+		assert.Equal(t, 400, resp.Code)
+	})
+
+	t.Run("handler error", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		type test struct {
+			Id string `json:"id"`
+		}
+
+		cmd := HTTPCommand(func(ctx context.Context, command test) error { return trail.NewError("an error") })
+		cmd.ServeHTTP(resp, req)
+
+		assert.Equal(t, 500, resp.Code)
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
+		req.Header.Set("Content-Type", "application/json")
+
+		type test struct {
+			Id string `json:"id"`
+		}
+
+		cmd := HTTPCommand(func(ctx context.Context, command test) error { return nil })
+		cmd.ServeHTTP(resp, req)
+
+		assert.Equal(t, 204, resp.Code)
+	})
+}
+
+func TestHTTPQuery(t *testing.T) {
+	t.Run("parse url error", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/test?id=one", nil)
+
+		type test struct {
+			Id int `json:"id"`
+		}
+
+		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, nil })
+		query.ServeHTTP(resp, req)
+
+		assert.Equal(t, 400, resp.Code)
+	})
+
+	t.Run("handler error", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/test?id=one", nil)
+
+		type test struct {
+			Id string `json:"id"`
+		}
+
+		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, trail.NewError("an error") })
+		query.ServeHTTP(resp, req)
+
+		assert.Equal(t, 500, resp.Code)
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		resp := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/test?id=one", nil)
+
+		type test struct {
+			Id string `json:"id"`
+		}
+
+		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, nil })
+		query.ServeHTTP(resp, req)
+
+		assert.Equal(t, 204, resp.Code)
 	})
 }
 
