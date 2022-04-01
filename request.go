@@ -3,10 +3,12 @@ package tea
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -87,6 +89,10 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	switch {
 	case strings.Contains(ct, "application/json"):
 		if err := json.NewDecoder(body).Decode(v); err != nil {
+			return trail.ErrorBadRequest(err)
+		}
+	case strings.Contains(ct, "multipart/form-data"):
+		if err := NewMultipartDecoder(w, r).Decode(v); err != nil {
 			return trail.ErrorBadRequest(err)
 		}
 	default:
@@ -184,5 +190,41 @@ func NewCORSMiddleware() CORSMiddleware {
 			},
 			AllowedHeaders: []string{"*"},
 		}),
+	}
+}
+
+type MultipartDecoder struct {
+	w http.ResponseWriter
+	r *http.Request
+}
+
+func (d MultipartDecoder) Decode(v interface{}) error {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	if rv.Kind() != reflect.Struct {
+		return trail.NewErrorf("item of type %T is not a struct", v)
+	}
+
+	t := rv.Type()
+	for i := 0; i < rv.NumField(); i++ {
+		if key := t.Field(i).Tag.Get("form"); key != "" {
+			v := rv.Field(i)
+			if v.CanSet() && v.Type().Implements(reflect.TypeOf(new(io.Reader)).Elem()) {
+				part, err := Part(d.w, d.r, key)
+				if err != nil {
+					return trail.ErrorBadRequest(err)
+				}
+
+				v.Set(reflect.ValueOf(part))
+			}
+		}
+	}
+
+	return nil
+}
+
+func NewMultipartDecoder(w http.ResponseWriter, r *http.Request) *MultipartDecoder {
+	return &MultipartDecoder{
+		w: w,
+		r: r,
 	}
 }

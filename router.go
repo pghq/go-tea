@@ -1,6 +1,7 @@
 package tea
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -18,7 +19,7 @@ type Router struct {
 	middlewares []Middleware
 }
 
-// Route adds a handler for the path
+// Route adds a handler for the http method and endpoint
 func (r *Router) Route(method, endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware) {
 	s := r.routes.Methods(method, "OPTIONS").Subrouter()
 	s.HandleFunc(endpoint, handlerFunc)
@@ -70,4 +71,46 @@ func NotFoundHandler(w http.ResponseWriter, _ *http.Request) {
 func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusMethodNotAllowed)
 	_, _ = w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
+}
+
+// HTTPCommand creates a http command handler from a command
+func HTTPCommand[command any](fn func(context.Context, command) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req command
+		if err := Parse(w, r, &req); err != nil {
+			SendError(w, r, err)
+			return
+		}
+
+		if err := ParseURL(r, &req); err != nil {
+			SendError(w, r, err)
+			return
+		}
+
+		if err := fn(r.Context(), req); err != nil {
+			SendError(w, r, err)
+			return
+		}
+
+		Send(w, r, nil)
+	}
+}
+
+// HTTPQuery creates a http query handler from a query
+func HTTPQuery[query any, response any](fn func(context.Context, query) (response, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req query
+		if err := ParseURL(r, &req); err != nil {
+			SendError(w, r, err)
+			return
+		}
+
+		resp, err := fn(r.Context(), req)
+		if err != nil {
+			SendError(w, r, err)
+			return
+		}
+
+		Send(w, r, resp)
+	}
 }
