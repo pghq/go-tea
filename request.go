@@ -65,41 +65,43 @@ func ParseURL(r *http.Request, v interface{}) error {
 	return nil
 }
 
-// Parse is a method to decode a http request body into a value
-// JSON and schema struct tags are supported
+// Parse is a method to decode a http request into a value
+// schema struct tags are supported
 func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 	if v == nil {
 		return trail.NewError("no value")
 	}
 
-	if r.Body == http.NoBody {
-		return nil
+	if r.Body != http.NoBody {
+		b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
+		if err != nil {
+			return trail.ErrorBadRequest(err)
+		}
+
+		_ = r.Body.Close()
+		body := ioutil.NopCloser(bytes.NewBuffer(b))
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+		ct := r.Header.Get("Content-Type")
+
+		switch {
+		case strings.Contains(ct, "application/json"):
+			if err := json.NewDecoder(body).Decode(v); err != nil {
+				return trail.ErrorBadRequest(err)
+			}
+		case strings.Contains(ct, "multipart/form-data"):
+			if err := NewMultipartDecoder(w, r).Decode(v); err != nil {
+				return trail.ErrorBadRequest(err)
+			}
+		default:
+			return trail.NewErrorBadRequest("content type not supported")
+		}
 	}
 
-	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
-	if err != nil {
+	if err := NewHeaderDecoder(r).Decode(v); err != nil {
 		return trail.ErrorBadRequest(err)
 	}
 
-	_ = r.Body.Close()
-	body := ioutil.NopCloser(bytes.NewBuffer(b))
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-	ct := r.Header.Get("Content-Type")
-
-	switch {
-	case strings.Contains(ct, "application/json"):
-		if err := json.NewDecoder(body).Decode(v); err != nil {
-			return trail.ErrorBadRequest(err)
-		}
-	case strings.Contains(ct, "multipart/form-data"):
-		if err := NewMultipartDecoder(w, r).Decode(v); err != nil {
-			return trail.ErrorBadRequest(err)
-		}
-	default:
-		return trail.NewErrorBadRequest("content type not supported")
-	}
-
-	return nil
+	return ParseURL(r, v)
 }
 
 // Part reads a multipart message by name from a http request and leaves the body intact
@@ -136,10 +138,10 @@ func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part,
 
 // Auth reads and parses the authorization header
 // from the request if provided
-func Auth(r *http.Request) string {
+func Auth(r *http.Request, scheme string) string {
 	auth := strings.Split(r.Header.Get("Authorization"), " ")
 
-	if len(auth) != 2 {
+	if len(auth) != 2 || strings.ToLower(scheme) != strings.ToLower(auth[0]) {
 		return ""
 	}
 
@@ -193,6 +195,7 @@ func NewCORSMiddleware() CORSMiddleware {
 	}
 }
 
+// MultipartDecoder decodes multipart/form-data requests into multipart.Parts
 type MultipartDecoder struct {
 	w http.ResponseWriter
 	r *http.Request
@@ -222,9 +225,54 @@ func (d MultipartDecoder) Decode(v interface{}) error {
 	return nil
 }
 
+// NewMultipartDecoder creates a new multipart/form-data decoder
 func NewMultipartDecoder(w http.ResponseWriter, r *http.Request) *MultipartDecoder {
 	return &MultipartDecoder{
 		w: w,
+		r: r,
+	}
+}
+
+// HeaderDecoder decodes headers into structs
+type HeaderDecoder struct {
+	r *http.Request
+}
+
+func (d HeaderDecoder) Decode(v interface{}) error {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	if rv.Kind() != reflect.Struct {
+		return trail.NewErrorf("item of type %T is not a struct", v)
+	}
+
+	t := rv.Type()
+	for i := 0; i < rv.NumField(); i++ {
+		if key := t.Field(i).Tag.Get("auth"); key != "" {
+			v := rv.Field(i)
+			if v.CanSet() && v.Type().String() == "string" {
+				v.Set(reflect.ValueOf(Auth(d.r, key)))
+			}
+		}
+
+		if key := t.Field(i).Tag.Get("header"); key != "" {
+			v := rv.Field(i)
+			if v.CanSet() {
+				headers := d.r.Header
+				if v.Type().String() == "string" {
+					v.Set(reflect.ValueOf(headers.Get(key)))
+				}
+				if v.Type().String() == "[]string" {
+					v.Set(reflect.ValueOf(headers.Values(key)))
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// NewHeaderDecoder creates a new header decoder instance
+func NewHeaderDecoder(r *http.Request) *HeaderDecoder {
+	return &HeaderDecoder{
 		r: r,
 	}
 }

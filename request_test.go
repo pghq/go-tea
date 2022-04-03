@@ -80,14 +80,14 @@ func TestAuth(t *testing.T) {
 	t.Parallel()
 	t.Run("ignores no auth header", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		auth := Auth(req)
+		auth := Auth(req, "bearer")
 		assert.Empty(t, auth)
 	})
 
 	t.Run("can detect auth header", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Authorization", "Basic ZGVtbzpwQDU1dzByZA==")
-		auth := Auth(req)
+		auth := Auth(req, "basic")
 		assert.Equal(t, "ZGVtbzpwQDU1dzByZA==", auth)
 	})
 }
@@ -216,6 +216,50 @@ func TestParse(t *testing.T) {
 			err := Parse(httptest.NewRecorder(), req, &query)
 			assert.Nil(t, err)
 			assert.NotNil(t, query.File)
+		})
+	})
+
+	t.Run("headers", func(t *testing.T) {
+		t.Run("not a struct", func(t *testing.T) {
+			var value int
+			req := httptest.NewRequest("GET", "/tests", nil)
+			req.Header.Set("Authorization", "Bearer foo")
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.NotNil(t, err)
+		})
+
+		t.Run("auth", func(t *testing.T) {
+			var value struct {
+				AccessToken string `auth:"bearer"`
+			}
+			req := httptest.NewRequest("GET", "/tests", nil)
+			req.Header.Set("Authorization", "Bearer foo")
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.Nil(t, err)
+			assert.Equal(t, "foo", value.AccessToken)
+		})
+
+		t.Run("header value string", func(t *testing.T) {
+			var value struct {
+				Id string `header:"X-Network-Id"`
+			}
+			req := httptest.NewRequest("GET", "/tests", nil)
+			req.Header.Set("X-Network-Id", "foo")
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.Nil(t, err)
+			assert.Equal(t, "foo", value.Id)
+		})
+
+		t.Run("header value string slice", func(t *testing.T) {
+			var value struct {
+				Ids []string `header:"X-Network"`
+			}
+			req := httptest.NewRequest("GET", "/tests", nil)
+			req.Header.Add("X-Network", "foo")
+			req.Header.Add("X-Network", "bar")
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.Nil(t, err)
+			assert.Equal(t, []string{"foo", "bar"}, value.Ids)
 		})
 	})
 }

@@ -82,11 +82,6 @@ func HTTPCommand[command any](fn func(context.Context, command) error) http.Hand
 			return
 		}
 
-		if err := ParseURL(r, &req); err != nil {
-			SendError(w, r, err)
-			return
-		}
-
 		if err := fn(r.Context(), req); err != nil {
 			SendError(w, r, err)
 			return
