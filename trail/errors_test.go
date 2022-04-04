@@ -84,6 +84,14 @@ func TestErrorTooManyRequests(t *testing.T) {
 	})
 }
 
+func TestErrorNotAuthorized(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ok", func(t *testing.T) {
+		assert.True(t, IsNotAuthorized(ErrorNotAuthorized(NewErrorNotAuthorized("a message"))))
+	})
+}
+
 func TestAsError(t *testing.T) {
 	t.Parallel()
 
