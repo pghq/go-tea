@@ -258,7 +258,11 @@ func (d HeaderDecoder) Decode(v interface{}) error {
 			if v.CanSet() {
 				headers := d.r.Header
 				if v.Type().String() == "string" {
-					v.Set(reflect.ValueOf(headers.Get(key)))
+					header := headers.Get(key)
+					if header == "" {
+						header = t.Field(i).Tag.Get("default")
+					}
+					v.Set(reflect.ValueOf(header))
 				}
 				if v.Type().String() == "[]string" {
 					v.Set(reflect.ValueOf(headers.Values(key)))

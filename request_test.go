@@ -250,6 +250,16 @@ func TestParse(t *testing.T) {
 			assert.Equal(t, "foo", value.Id)
 		})
 
+		t.Run("header value string default", func(t *testing.T) {
+			var value struct {
+				Id string `header:"X-Network-Id" default:"bar"`
+			}
+			req := httptest.NewRequest("GET", "/tests", nil)
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.Nil(t, err)
+			assert.Equal(t, "bar", value.Id)
+		})
+
 		t.Run("header value string slice", func(t *testing.T) {
 			var value struct {
 				Ids []string `header:"X-Network"`

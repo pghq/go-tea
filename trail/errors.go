@@ -134,6 +134,21 @@ func IsTooManyRequests(err error) bool {
 	return err != nil && StatusCode(err) == http.StatusTooManyRequests
 }
 
+// ErrorNotAuthorized creates an unauthorized error
+func ErrorNotAuthorized(err error) error {
+	return errorTransfer(http.StatusUnauthorized, err)
+}
+
+// NewErrorNotAuthorized creates an unauthorized error from a msg
+func NewErrorNotAuthorized(msg string) error {
+	return NewErrorWithCode(msg, http.StatusUnauthorized)
+}
+
+// IsNotAuthorized checks if an error is an unauthorized application error
+func IsNotAuthorized(err error) bool {
+	return IsError(err, context.Canceled) || err != nil && StatusCode(err) == http.StatusUnauthorized
+}
+
 // AsError finds first error in chain matching target.
 func AsError(err error, target interface{}) bool {
 	// why would we ever want to panic on this call???
