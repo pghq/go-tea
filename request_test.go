@@ -20,7 +20,7 @@ func TestPart(t *testing.T) {
 	t.Run("raises bad request body errors", func(t *testing.T) {
 		body := iotest.ErrReader(trail.NewError("an error has occurred"))
 		req := httptest.NewRequest("POST", "/tests", body)
-		_, err := Part(httptest.NewRecorder(), req, "test")
+		_, err := part(httptest.NewRecorder(), req, "test")
 		assert.True(t, trail.IsBadRequest(err))
 	})
 
@@ -29,7 +29,7 @@ func TestPart(t *testing.T) {
 			"data": "test"
 		}`)
 		req := httptest.NewRequest("POST", "/tests", body)
-		_, err := Part(httptest.NewRecorder(), req, "test")
+		_, err := part(httptest.NewRecorder(), req, "test")
 		assert.True(t, trail.IsBadRequest(err))
 	})
 
@@ -42,7 +42,7 @@ func TestPart(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", mw.FormDataContentType())
-		_, err := Part(httptest.NewRecorder(), req, "file")
+		_, err := part(httptest.NewRecorder(), req, "file")
 		assert.NotNil(t, err)
 	})
 
@@ -58,20 +58,20 @@ func TestPart(t *testing.T) {
 
 		req := httptest.NewRequest("POST", "/tests", body)
 		req.Header.Set("Content-Type", mw.FormDataContentType())
-		part, err := Part(httptest.NewRecorder(), req, "file")
-		defer part.Close()
+		p, err := part(httptest.NewRecorder(), req, "file")
+		defer p.Close()
 		assert.Nil(t, err)
-		assert.NotNil(t, part)
-		assert.Equal(t, "file.csv", part.FileName())
-		assert.Equal(t, "application/octet-stream", part.Header.Get("Content-Type"))
-		data, _ := io.ReadAll(part)
+		assert.NotNil(t, p)
+		assert.Equal(t, "file.csv", p.FileName())
+		assert.Equal(t, "application/octet-stream", p.Header.Get("Content-Type"))
+		data, _ := io.ReadAll(p)
 		assert.Equal(t, "example", string(data))
 
-		part, err = Part(httptest.NewRecorder(), req, "foo")
-		defer part.Close()
+		p, err = part(httptest.NewRecorder(), req, "foo")
+		defer p.Close()
 		assert.Nil(t, err)
-		assert.NotNil(t, part)
-		data, _ = io.ReadAll(part)
+		assert.NotNil(t, p)
+		data, _ = io.ReadAll(p)
 		assert.Equal(t, "test", string(data))
 	})
 }
@@ -80,14 +80,14 @@ func TestAuth(t *testing.T) {
 	t.Parallel()
 	t.Run("ignores no auth header", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		auth := Auth(req, "bearer")
+		auth := auth(req, "bearer")
 		assert.Empty(t, auth)
 	})
 
 	t.Run("can detect auth header", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Authorization", "Basic ZGVtbzpwQDU1dzByZA==")
-		auth := Auth(req, "basic")
+		auth := auth(req, "basic")
 		assert.Equal(t, "ZGVtbzpwQDU1dzByZA==", auth)
 	})
 }
@@ -96,28 +96,28 @@ func TestAccepts(t *testing.T) {
 	t.Parallel()
 	t.Run("accepts JSON if not present", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		accepts := Accepts(req, "application/json")
+		accepts := accepts(req, "application/json")
 		assert.True(t, accepts)
 	})
 
 	t.Run("recognizes an exact match", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Accept", "image/webp,image/png,image/svg+xml,image/*;application/json")
-		accepts := Accepts(req, "application/json")
+		accepts := accepts(req, "application/json")
 		assert.True(t, accepts)
 	})
 
 	t.Run("recognizes the wildcard", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Accept", "image/webp,image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8,*/*;q=0.5")
-		accepts := Accepts(req, "application/json")
+		accepts := accepts(req, "application/json")
 		assert.True(t, accepts)
 	})
 
 	t.Run("does not match", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Accept", "image/webp,image/png,image/svg+xml,image/*;q=0.8,video/*;q=0.8;q=0.5")
-		accepts := Accepts(req, "application/json")
+		accepts := accepts(req, "application/json")
 		assert.False(t, accepts)
 	})
 }
@@ -283,14 +283,14 @@ func TestParseURL(t *testing.T) {
 		}
 		req := httptest.NewRequest("GET", "/tests?data=test", nil)
 		req.Header.Set("Content-Type", "application/json")
-		err := ParseURL(req, &query)
+		err := parseURL(req, &query)
 		assert.Nil(t, err)
 		assert.Equal(t, "test", query.QueryData)
 	})
 
 	t.Run("raises nil query errors", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
-		err := ParseURL(req, nil)
+		err := parseURL(req, nil)
 		assert.True(t, trail.IsFatal(err))
 	})
 
@@ -300,7 +300,7 @@ func TestParseURL(t *testing.T) {
 		}
 
 		req := httptest.NewRequest("GET", "/tests?first=three", nil)
-		err := ParseURL(req, &query)
+		err := parseURL(req, &query)
 		assert.True(t, trail.IsBadRequest(err))
 	})
 
@@ -311,7 +311,7 @@ func TestParseURL(t *testing.T) {
 
 		req := httptest.NewRequest("GET", "/tests/:test", nil)
 		req = mux.SetURLVars(req, map[string]string{"test": "one"})
-		err := ParseURL(req, &query)
+		err := parseURL(req, &query)
 		assert.True(t, trail.IsBadRequest(err))
 	})
 }

@@ -78,12 +78,12 @@ func HTTPCommand[command any](fn func(context.Context, command) error) http.Hand
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req command
 		if err := Parse(w, r, &req); err != nil {
-			SendError(w, r, err)
+			Send(w, r, err)
 			return
 		}
 
 		if err := fn(r.Context(), req); err != nil {
-			SendError(w, r, err)
+			Send(w, r, err)
 			return
 		}
 
@@ -95,14 +95,14 @@ func HTTPCommand[command any](fn func(context.Context, command) error) http.Hand
 func HTTPQuery[query any, response any](fn func(context.Context, query) (response, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req query
-		if err := ParseURL(r, &req); err != nil {
-			SendError(w, r, err)
+		if err := parseURL(r, &req); err != nil {
+			Send(w, r, err)
 			return
 		}
 
 		resp, err := fn(r.Context(), req)
 		if err != nil {
-			SendError(w, r, err)
+			Send(w, r, err)
 			return
 		}
 

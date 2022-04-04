@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pghq/go-tea/trail"
 )
 
 func TestSend(t *testing.T) {
@@ -50,16 +48,28 @@ func TestSend(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.JSONEq(t, `{"key": "value"}`, w.Body.String())
 	})
-}
 
-func TestSendError(t *testing.T) {
-	t.Parallel()
-
-	t.Run("no content", func(t *testing.T) {
+	t.Run("can encode headers", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/tests", nil)
-		SendError(w, req, nil)
-		assert.Equal(t, http.StatusNoContent, w.Code)
+		req.Header.Set("Content-Type", "application/json")
+
+		type headerResponse struct {
+			RequestId string   `header:"request-id"`
+			Names     []string `header:"names"`
+			Empty     string   `header:"empty,omitempty"`
+		}
+
+		response := headerResponse{
+			RequestId: "foo",
+			Names:     []string{"bar"},
+		}
+
+		Send(w, req, response)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "foo", w.Header().Get("request-id"))
+		assert.Equal(t, []string{"bar"}, w.Header().Values("names"))
+		assert.Empty(t, w.Header().Get("empty"))
 	})
 }
 
@@ -67,19 +77,7 @@ func TestBody(t *testing.T) {
 	t.Parallel()
 
 	t.Run("byte slice", func(t *testing.T) {
-		_, _, err := Body(httptest.NewRequest("", "/test", nil), []byte{})
+		_, _, err := body(httptest.NewRequest("", "/test", nil), []byte{})
 		assert.Nil(t, err)
-	})
-}
-
-func TestSendNotAuthorized(t *testing.T) {
-	t.Parallel()
-
-	t.Run("not unauthorized", func(t *testing.T) {
-		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), trail.NewError("a message"))
-	})
-
-	t.Run("unauthorized", func(t *testing.T) {
-		SendNotAuthorized(httptest.NewRecorder(), httptest.NewRequest("", "/test", nil), trail.NewErrorBadRequest("a message"))
 	})
 }

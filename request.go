@@ -34,11 +34,50 @@ func init() {
 	dec.SetAliasTag("json")
 }
 
-// ParseURL is a method to decode a http request query and path into a value
+// Parse is a method to decode a http request into a value
+// schema struct tags are supported
+func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
+	if v == nil {
+		return trail.NewError("no value")
+	}
+
+	if r.Body != http.NoBody {
+		b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
+		if err != nil {
+			return trail.ErrorBadRequest(err)
+		}
+
+		_ = r.Body.Close()
+		body := ioutil.NopCloser(bytes.NewBuffer(b))
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+		ct := r.Header.Get("Content-Type")
+
+		switch {
+		case strings.Contains(ct, "application/json"):
+			if err := json.NewDecoder(body).Decode(v); err != nil {
+				return trail.ErrorBadRequest(err)
+			}
+		case strings.Contains(ct, "multipart/form-data"):
+			if err := newMultipartDecoder(w, r).decode(v); err != nil {
+				return trail.ErrorBadRequest(err)
+			}
+		default:
+			return trail.NewErrorBadRequest("content type not supported")
+		}
+	}
+
+	if err := newHeaderDecoder(r).decode(v); err != nil {
+		return trail.ErrorBadRequest(err)
+	}
+
+	return parseURL(r, v)
+}
+
+// parseURL is a method to decode a http request query and path into a value
 // schema struct tags are supported
 //
 // Query parameters and path parameters get decoded
-func ParseURL(r *http.Request, v interface{}) error {
+func parseURL(r *http.Request, v interface{}) error {
 	if v == nil {
 		return trail.NewError("no value")
 	}
@@ -65,47 +104,8 @@ func ParseURL(r *http.Request, v interface{}) error {
 	return nil
 }
 
-// Parse is a method to decode a http request into a value
-// schema struct tags are supported
-func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
-	if v == nil {
-		return trail.NewError("no value")
-	}
-
-	if r.Body != http.NoBody {
-		b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
-		if err != nil {
-			return trail.ErrorBadRequest(err)
-		}
-
-		_ = r.Body.Close()
-		body := ioutil.NopCloser(bytes.NewBuffer(b))
-		r.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-		ct := r.Header.Get("Content-Type")
-
-		switch {
-		case strings.Contains(ct, "application/json"):
-			if err := json.NewDecoder(body).Decode(v); err != nil {
-				return trail.ErrorBadRequest(err)
-			}
-		case strings.Contains(ct, "multipart/form-data"):
-			if err := NewMultipartDecoder(w, r).Decode(v); err != nil {
-				return trail.ErrorBadRequest(err)
-			}
-		default:
-			return trail.NewErrorBadRequest("content type not supported")
-		}
-	}
-
-	if err := NewHeaderDecoder(r).Decode(v); err != nil {
-		return trail.ErrorBadRequest(err)
-	}
-
-	return ParseURL(r, v)
-}
-
-// Part reads a multipart message by name from a http request and leaves the body intact
-func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
+// part reads a multipart message by name from a http request and leaves the body intact
+func part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part, error) {
 	b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 	if err != nil {
 		return nil, trail.ErrorBadRequest(err)
@@ -136,9 +136,9 @@ func Part(w http.ResponseWriter, r *http.Request, name string) (*multipart.Part,
 	}
 }
 
-// Auth reads and parses the authorization header
+// auth reads and parses the authorization header
 // from the request if provided
-func Auth(r *http.Request, scheme string) string {
+func auth(r *http.Request, scheme string) string {
 	auth := strings.Split(r.Header.Get("Authorization"), " ")
 
 	if len(auth) != 2 || strings.ToLower(scheme) != strings.ToLower(auth[0]) {
@@ -148,8 +148,8 @@ func Auth(r *http.Request, scheme string) string {
 	return auth[1]
 }
 
-// Accepts checks whether the response type is accepted
-func Accepts(r *http.Request, contentType string) bool {
+// accepts checks whether the response type is accepted
+func accepts(r *http.Request, contentType string) bool {
 	accept := r.Header.Get("Accept")
 	if accept == "" {
 		return true
@@ -195,13 +195,13 @@ func NewCORSMiddleware() CORSMiddleware {
 	}
 }
 
-// MultipartDecoder decodes multipart/form-data requests into multipart.Parts
-type MultipartDecoder struct {
+// multipartDecoder decodes multipart/form-data requests into multipart.Parts
+type multipartDecoder struct {
 	w http.ResponseWriter
 	r *http.Request
 }
 
-func (d MultipartDecoder) Decode(v interface{}) error {
+func (d multipartDecoder) decode(v interface{}) error {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
 		return trail.NewErrorf("item of type %T is not a struct", v)
@@ -212,7 +212,7 @@ func (d MultipartDecoder) Decode(v interface{}) error {
 		if key := t.Field(i).Tag.Get("form"); key != "" {
 			v := rv.Field(i)
 			if v.CanSet() && v.Type().Implements(reflect.TypeOf(new(io.Reader)).Elem()) {
-				part, err := Part(d.w, d.r, key)
+				part, err := part(d.w, d.r, key)
 				if err != nil {
 					return trail.ErrorBadRequest(err)
 				}
@@ -225,20 +225,20 @@ func (d MultipartDecoder) Decode(v interface{}) error {
 	return nil
 }
 
-// NewMultipartDecoder creates a new multipart/form-data decoder
-func NewMultipartDecoder(w http.ResponseWriter, r *http.Request) *MultipartDecoder {
-	return &MultipartDecoder{
+// newMultipartDecoder creates a new multipart/form-data decoder
+func newMultipartDecoder(w http.ResponseWriter, r *http.Request) *multipartDecoder {
+	return &multipartDecoder{
 		w: w,
 		r: r,
 	}
 }
 
-// HeaderDecoder decodes headers into structs
-type HeaderDecoder struct {
+// headerDecoder decodes headers into structs
+type headerDecoder struct {
 	r *http.Request
 }
 
-func (d HeaderDecoder) Decode(v interface{}) error {
+func (d headerDecoder) decode(v interface{}) error {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
 		return trail.NewErrorf("item of type %T is not a struct", v)
@@ -249,23 +249,22 @@ func (d HeaderDecoder) Decode(v interface{}) error {
 		if key := t.Field(i).Tag.Get("auth"); key != "" {
 			v := rv.Field(i)
 			if v.CanSet() && v.Type().String() == "string" {
-				v.Set(reflect.ValueOf(Auth(d.r, key)))
+				v.Set(reflect.ValueOf(auth(d.r, key)))
 			}
 		}
 
 		if key := t.Field(i).Tag.Get("header"); key != "" {
 			v := rv.Field(i)
 			if v.CanSet() {
-				headers := d.r.Header
-				if v.Type().String() == "string" {
-					header := headers.Get(key)
+				switch v.Type().String() {
+				case "string":
+					header := d.r.Header.Get(key)
 					if header == "" {
 						header = t.Field(i).Tag.Get("default")
 					}
 					v.Set(reflect.ValueOf(header))
-				}
-				if v.Type().String() == "[]string" {
-					v.Set(reflect.ValueOf(headers.Values(key)))
+				case "[]string":
+					v.Set(reflect.ValueOf(d.r.Header.Values(key)))
 				}
 			}
 		}
@@ -274,9 +273,9 @@ func (d HeaderDecoder) Decode(v interface{}) error {
 	return nil
 }
 
-// NewHeaderDecoder creates a new header decoder instance
-func NewHeaderDecoder(r *http.Request) *HeaderDecoder {
-	return &HeaderDecoder{
+// newHeaderDecoder creates a new header decoder instance
+func newHeaderDecoder(r *http.Request) *headerDecoder {
+	return &headerDecoder{
 		r: r,
 	}
 }

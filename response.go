@@ -2,6 +2,8 @@ package tea
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
 
 	"net/http"
 
@@ -15,9 +17,16 @@ func Send(w http.ResponseWriter, r *http.Request, raw interface{}) {
 		return
 	}
 
-	body, content, err := Body(r, raw)
+	if err, ok := raw.(error); ok {
+		sendError(w, r, err)
+		return
+	}
+
+	newHeaderEncoder(w).encode(raw)
+
+	body, content, err := body(r, raw)
 	if err != nil {
-		SendError(w, r, err)
+		sendError(w, r, err)
 		return
 	}
 
@@ -29,14 +38,9 @@ func Send(w http.ResponseWriter, r *http.Request, raw interface{}) {
 	_, _ = w.Write(body)
 }
 
-// SendError replies to the request with an error
+// sendError replies to the request with an error
 // and emits fatal http errors to global log and monitor.
-func SendError(w http.ResponseWriter, r *http.Request, err error) {
-	if err == nil {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
+func sendError(w http.ResponseWriter, r *http.Request, err error) {
 	span := trail.StartSpan(r.Context(), "http.error")
 	defer span.Finish()
 
@@ -52,19 +56,9 @@ func SendError(w http.ResponseWriter, r *http.Request, err error) {
 	http.Error(w, msg, status)
 }
 
-// SendNotAuthorized sends a not authorized error
-func SendNotAuthorized(w http.ResponseWriter, r *http.Request, err error, force ...bool) {
-	if (len(force) == 0 || !force[0]) && trail.IsFatal(err) {
-		SendError(w, r, err)
-		return
-	}
-
-	SendError(w, r, trail.NewErrorWithCode(err.Error(), http.StatusUnauthorized))
-}
-
-// Body gets the response body as bytes based on origin
-func Body(r *http.Request, body interface{}) ([]byte, string, error) {
-	if Accepts(r, "*/*") {
+// body gets the response body as bytes based on origin
+func body(r *http.Request, body interface{}) ([]byte, string, error) {
+	if accepts(r, "*/*") {
 		if body, ok := body.([]byte); ok {
 			return body, "", nil
 		}
@@ -75,7 +69,7 @@ func Body(r *http.Request, body interface{}) ([]byte, string, error) {
 	}
 
 	switch {
-	case Accepts(r, "application/json"):
+	case accepts(r, "application/json"):
 		bytes, err := json.Marshal(body)
 		if err != nil {
 			return nil, "", trail.Stacktrace(err)
@@ -85,4 +79,46 @@ func Body(r *http.Request, body interface{}) ([]byte, string, error) {
 	}
 
 	return nil, "", trail.NewErrorBadRequest("unsupported content type")
+}
+
+// headerEncoder encodes the value into the headers
+type headerEncoder struct {
+	w http.ResponseWriter
+}
+
+func (e headerEncoder) encode(v interface{}) {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	if rv.Kind() != reflect.Struct {
+		return
+	}
+
+	t := rv.Type()
+	for i := 0; i < rv.NumField(); i++ {
+		if key := t.Field(i).Tag.Get("header"); key != "" {
+			v := rv.Field(i)
+			omitempty := strings.HasSuffix(key, ",omitempty")
+			key = strings.TrimSuffix(key, ",omitempty")
+
+			switch v.Type().String() {
+			case "string":
+				if header := v.String(); header != "" || header == "" && !omitempty {
+					e.w.Header().Set(key, header)
+				}
+			case "[]string":
+				headers, _ := v.Interface().([]string)
+				for _, header := range headers {
+					if header != "" || header == "" && !omitempty {
+						e.w.Header().Add(key, header)
+					}
+				}
+			}
+		}
+	}
+}
+
+// newHeaderEncoder creates a new header decoder instance
+func newHeaderEncoder(w http.ResponseWriter) *headerEncoder {
+	return &headerEncoder{
+		w: w,
+	}
 }
