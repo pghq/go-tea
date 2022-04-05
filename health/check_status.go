@@ -1,5 +1,7 @@
 package health
 
+import "sync"
+
 const (
 	// UptimeCheckKey is the key for the uptime health measurement
 	UptimeCheckKey = "uptime"
@@ -32,6 +34,22 @@ func (s Service) Status() *StatusResponse {
 	}
 
 	status.WithCheck(UptimeCheckKey, s.Uptime())
+	wg := sync.WaitGroup{}
+	for _, dep := range s.dependencies {
+		wg.Add(1)
+		go func(dep dependency) {
+			defer wg.Done()
+			status.WithCheck(dep.name, NewDependencyCheck(s.now(), dep.url))
+		}(dep)
+	}
 
+	wg.Wait()
 	return &status
+}
+
+func (s *Service) AddDependency(dependencyName string, dependencyURL string) {
+	s.dependencies = append(s.dependencies, dependency{
+		name: dependencyName,
+		url:  dependencyURL,
+	})
 }
