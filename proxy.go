@@ -1,6 +1,7 @@
 package tea
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -19,7 +20,7 @@ type Proxy struct {
 	directors   map[string]*httputil.ReverseProxy
 	base        []Middleware
 	middlewares []Middleware
-	health      http.Handler
+	health      *health.Service
 }
 
 // Middleware adds a middleware to the proxy
@@ -46,6 +47,7 @@ func (p *Proxy) Direct(root, host string) error {
 		},
 	}
 
+	p.health.AddDependency(root, fmt.Sprintf("%s://%s/health/status", hostURL.Scheme, hostURL.Host))
 	return nil
 }
 
@@ -57,7 +59,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	middlewares := p.base
 	switch {
 	case r.URL.Path == "/health/status":
-		handler = p.health
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			Send(w, r, p.health.Status())
+		})
 	case present:
 		handler = director
 		middlewares = append(middlewares, p.middlewares...)
@@ -81,14 +85,12 @@ func NewProxy(semver string, collector trail.FiberCollectorFunc) *Proxy {
 		cv = v.String()
 	}
 
-	hc := health.NewService(cv)
 	p := Proxy{
 		directors:   make(map[string]*httputil.ReverseProxy),
 		base:        []Middleware{NewCORSMiddleware()},
 		middlewares: []Middleware{trail.NewTraceMiddleware(cv, collector)},
-		health: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			Send(w, r, hc.Status())
-		}),
+		health:      health.NewService(cv),
 	}
+
 	return &p
 }
