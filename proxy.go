@@ -18,8 +18,9 @@ import (
 // Proxy is a multi-host reverse proxy
 type Proxy struct {
 	directors   map[string]*httputil.ReverseProxy
-	base        []Middleware
 	middlewares []Middleware
+	cors        CORSMiddleware
+	trace       *trail.TraceMiddleware
 	health      *health.Service
 }
 
@@ -51,12 +52,17 @@ func (p *Proxy) Direct(root, host string) error {
 	return nil
 }
 
+// Collect sets a custom collector for fibers
+func (p *Proxy) Collect(fn trail.FiberCollectorFunc) {
+	p.trace.Collect(fn)
+}
+
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, string(os.PathSeparator))
 	root := strings.Split(filepath.Dir(path), string(os.PathSeparator))[0]
 	director, present := p.directors[root]
 	var handler http.Handler
-	middlewares := p.base
+	middlewares := []Middleware{p.cors}
 	switch {
 	case r.URL.Path == "/health/status":
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +70,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 	case present:
 		handler = director
+		middlewares = append(middlewares, p.trace)
 		middlewares = append(middlewares, p.middlewares...)
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -78,7 +85,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewProxy creates a new multi-host reverse proxy
-func NewProxy(semver string, collector trail.FiberCollectorFunc) *Proxy {
+func NewProxy(semver string) *Proxy {
 	v, _ := version.NewVersion(semver)
 	cv := semver
 	if v != nil {
@@ -86,10 +93,10 @@ func NewProxy(semver string, collector trail.FiberCollectorFunc) *Proxy {
 	}
 
 	p := Proxy{
-		directors:   make(map[string]*httputil.ReverseProxy),
-		base:        []Middleware{NewCORSMiddleware()},
-		middlewares: []Middleware{trail.NewTraceMiddleware(cv, collector)},
-		health:      health.NewService(cv),
+		directors: make(map[string]*httputil.ReverseProxy),
+		cors:      NewCORSMiddleware(),
+		trace:     trail.NewTraceMiddleware(cv),
+		health:    health.NewService(cv),
 	}
 
 	return &p
