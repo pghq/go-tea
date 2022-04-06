@@ -55,21 +55,23 @@ func TestTraceMiddleware_Handle(t *testing.T) {
 	t.Parallel()
 
 	t.Run("recovers from panic", func(t *testing.T) {
-		m := NewTraceMiddleware("", func(bundle []Fiber) {})
+		m := NewTraceMiddleware("")
+		m.Collect(func(bundle []Fiber) {})
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			panic("panic")
 		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
 	})
 
 	t.Run("writes fiber header", func(t *testing.T) {
-		m := NewTraceMiddleware("", nil)
+		m := NewTraceMiddleware("")
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
 	})
 
 	t.Run("collects fibers", func(t *testing.T) {
-		m := NewTraceMiddleware("", func(bundle []Fiber) {})
+		m := NewTraceMiddleware("")
+		m.Collect(func(bundle []Fiber) {})
 		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_ = compressHeader(w, "Trail-Fiber", Fiber{})
 			_ = compressHeader(w, "Trail-Fiber", Fiber{})

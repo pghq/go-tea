@@ -33,6 +33,7 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 			WithSpanVersion(m.version),
 			WithSpanCollector(m.collector),
 		)
+
 		defer span.Finish()
 		defer func() {
 			if err := recover(); err != nil {
@@ -45,11 +46,15 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
+// Collect sets a custom collector for fibers
+func (m *TraceMiddleware) Collect(fn FiberCollectorFunc) {
+	m.collector = fn
+}
+
 // NewTraceMiddleware constructs a new middleware that handles exceptions
-func NewTraceMiddleware(version string, collector FiberCollectorFunc) TraceMiddleware {
-	return TraceMiddleware{
-		version:   version,
-		collector: collector,
+func NewTraceMiddleware(version string) *TraceMiddleware {
+	return &TraceMiddleware{
+		version: version,
 	}
 }
 
