@@ -34,6 +34,10 @@ func TestStack(t *testing.T) {
 	t.Run("context timeout", func(t *testing.T) {
 		assert.False(t, IsFatal(Stacktrace(context.DeadlineExceeded)))
 	})
+
+	t.Run("ignores nil errors", func(t *testing.T) {
+		assert.Nil(t, Stacktrace(nil))
+	})
 }
 
 func TestErrf(t *testing.T) {

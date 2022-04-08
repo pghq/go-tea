@@ -29,6 +29,10 @@ func (e *stacktrace) Format(s fmt.State, verb rune) {
 
 // Stacktrace adds stacktrace to an error
 func Stacktrace(err error) error {
+	if err == nil {
+		return nil
+	}
+
 	if IsError(err, context.Canceled) {
 		return stack(err, http.StatusBadRequest)
 	}
