@@ -2,7 +2,7 @@ package trail
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/url"
@@ -32,23 +32,35 @@ const maxSpans = 1000
 // spanContextKey is the expected context key for spans
 type spanContextKey struct{}
 
-// Fields for custom data
-type Fields map[string]interface{}
+// Tags for custom data
+type Tags map[string]string
 
-// Set a field
-func (f *Fields) Set(key string, value interface{}) {
-	if f == nil || *f == nil {
-		*f = make(map[string]interface{})
+// Set a tag
+func (t *Tags) Set(key, value string) {
+	if t == nil || *t == nil {
+		*t = make(map[string]string)
 	}
 
-	data := *f
+	data := *t
 	data[key] = value
 }
 
+// SetJSON sets a json value
+func (t *Tags) SetJSON(key string, value interface{}) {
+	if b, err := json.Marshal(value); err == nil {
+		if t == nil || *t == nil {
+			*t = make(map[string]string)
+		}
+
+		data := *t
+		data[key] = string(b)
+	}
+}
+
 // Get a field by key
-func (f Fields) Get(key string) interface{} {
-	field, _ := f[key]
-	return field
+func (t Tags) Get(key string) string {
+	tag, _ := t[key]
+	return tag
 }
 
 // Span for tracing instrumentation
@@ -58,7 +70,7 @@ type Span struct {
 	Scope     string    `json:"scope"`
 	StartTime time.Time `json:"startTime"`
 	EndTime   time.Time `json:"endTime"`
-	Fields    Fields    `json:"fields,omitempty"`
+	Tags      Tags      `json:"tags,omitempty"`
 
 	ip        net.IP
 	requestId uuid.UUID
@@ -111,8 +123,8 @@ func (s *Span) Finish() {
 
 // sentryHub gets the closest matching hub to the span or defaults to current hub
 func (s *Span) sentryHub() *sentry.Hub {
-	for k, value := range s.Fields {
-		s.sentry.SetTag(k, fmt.Sprintf("%s", value))
+	for k, value := range s.Tags {
+		s.sentry.SetTag(k, value)
 	}
 
 	hub := sentry.GetHubFromContext(s.Context())
@@ -168,7 +180,7 @@ func WithSpanRequest(r *http.Request) SpanOption {
 		span.ip = net.ParseIP(r.Header.Get("X-Forwarded-For"))
 		span.userAgent = r.UserAgent()
 		span.url = r.URL
-		span.Fields.Set("request.id", requestId.String())
+		span.Tags.Set("request.id", requestId.String())
 		span.sentryHub().Scope().SetRequest(r)
 		r.Header.Set("Request-Id", requestId.String())
 	}
@@ -185,7 +197,7 @@ func WithSpanWriter(w SpanWriter) SpanOption {
 func WithSpanVersion(version string) SpanOption {
 	return func(span *Span) {
 		span.version = version
-		span.Fields.Set("app.version", version)
+		span.Tags.Set("app.version", version)
 	}
 }
 

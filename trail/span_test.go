@@ -36,14 +36,21 @@ func TestSpan_Capture(t *testing.T) {
 	})
 }
 
-func TestSpan_SetField(t *testing.T) {
+func TestSpan_SetTag(t *testing.T) {
 	t.Parallel()
 
 	t.Run("can set and get", func(t *testing.T) {
 		span := StartSpan(context.TODO(), "test")
 		defer span.Finish()
-		span.Fields.Set("key", "value")
-		assert.Equal(t, "value", span.Fields.Get("key"))
+		span.Tags.Set("key", "value")
+		assert.Equal(t, "value", span.Tags.Get("key"))
+	})
+
+	t.Run("can set and get json", func(t *testing.T) {
+		span := StartSpan(context.TODO(), "test")
+		defer span.Finish()
+		span.Tags.SetJSON("json", map[string]interface{}{"key": "value"})
+		assert.JSONEq(t, `{"key": "value"}`, span.Tags.Get("json"))
 	})
 }
 
