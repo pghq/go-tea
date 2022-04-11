@@ -42,6 +42,10 @@ func (t *Tags) Set(key, value string) {
 	}
 
 	data := *t
+	if value == "" {
+		delete(data, key)
+	}
+
 	data[key] = value
 }
 
@@ -180,7 +184,8 @@ func WithSpanRequest(r *http.Request) SpanOption {
 		span.ip = net.ParseIP(r.Header.Get("X-Forwarded-For"))
 		span.userAgent = r.UserAgent()
 		span.url = r.URL
-		span.Tags.Set("request.id", requestId.String())
+		span.Tags.Set("requestId", requestId.String())
+		span.Tags.Set("referrer", r.Header.Get("Referrer"))
 		span.sentryHub().Scope().SetRequest(r)
 		r.Header.Set("Request-Id", requestId.String())
 	}
@@ -197,7 +202,7 @@ func WithSpanWriter(w SpanWriter) SpanOption {
 func WithSpanVersion(version string) SpanOption {
 	return func(span *Span) {
 		span.version = version
-		span.Tags.Set("app.version", version)
+		span.Tags.Set("version", version)
 	}
 }
 

@@ -52,6 +52,13 @@ func TestSpan_SetTag(t *testing.T) {
 		span.Tags.SetJSON("json", map[string]interface{}{"key": "value"})
 		assert.JSONEq(t, `{"key": "value"}`, span.Tags.Get("json"))
 	})
+
+	t.Run("ignore empty value", func(t *testing.T) {
+		span := StartSpan(context.TODO(), "test")
+		defer span.Finish()
+		span.Tags.Set("key", "")
+		assert.Equal(t, "", span.Tags.Get("key"))
+	})
 }
 
 func TestSpan_Bundle(t *testing.T) {
