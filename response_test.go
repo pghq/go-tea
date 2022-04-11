@@ -56,16 +56,22 @@ func TestSend(t *testing.T) {
 		req := httptest.NewRequest("GET", "/tests", nil)
 		req.Header.Set("Content-Type", "application/json")
 
+		type Nested struct {
+			UUID uuid.UUID `header:"uuid"`
+		}
+
 		type headerResponse struct {
-			RequestId string    `header:"request-id"`
-			Names     []string  `header:"names"`
-			UUID      uuid.UUID `header:"uuid"`
-			Empty     string    `header:"empty,omitempty"`
+			Nested
+			RequestId string   `header:"request-id"`
+			Names     []string `header:"names"`
+			Empty     string   `header:"empty,omitempty"`
 		}
 
 		response := headerResponse{
+			Nested: Nested{
+				UUID: uuid.New(),
+			},
 			RequestId: "foo",
-			UUID:      uuid.New(),
 			Names:     []string{"bar"},
 		}
 
