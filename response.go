@@ -2,6 +2,7 @@ package tea
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -111,6 +112,8 @@ func (e headerEncoder) encode(v interface{}) {
 						e.w.Header().Add(key, header)
 					}
 				}
+			default:
+				e.w.Header().Set(key, fmt.Sprintf("%s", v.Interface()))
 			}
 		}
 	}
