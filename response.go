@@ -95,8 +95,13 @@ func (e headerEncoder) encode(v interface{}) {
 
 	t := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
-		if key := t.Field(i).Tag.Get("header"); key != "" {
-			v := rv.Field(i)
+		v := rv.Field(i)
+		if v.CanInterface() && v.Kind() == reflect.Struct {
+			e.encode(v.Interface())
+			continue
+		}
+
+		if key := t.Field(i).Tag.Get("header"); key != "" && v.CanInterface() {
 			omitempty := strings.HasSuffix(key, ",omitempty")
 			key = strings.TrimSuffix(key, ",omitempty")
 
