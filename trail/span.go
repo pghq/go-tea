@@ -85,7 +85,6 @@ type Span struct {
 	ctx       context.Context
 	bundle    *bundle
 	writer    SpanWriter
-	collector FiberCollectorFunc
 	sentry    *sentry.Span
 }
 
@@ -206,13 +205,6 @@ func WithSpanVersion(version string) SpanOption {
 	}
 }
 
-// WithSpanCollector is a span option for configuring the span with a custom collector.
-func WithSpanCollector(collector FiberCollectorFunc) SpanOption {
-	return func(span *Span) {
-		span.collector = collector
-	}
-}
-
 // Fiber is a local root span.
 type Fiber struct {
 	FiberId   uuid.UUID `json:"fiberId"`
@@ -246,6 +238,3 @@ func (b *bundle) add(s *Span) {
 type SpanWriter interface {
 	WriteSpan(span *Span)
 }
-
-// FiberCollectorFunc is a writer for handling aggregated span fibers.
-type FiberCollectorFunc func(bundle []Fiber)

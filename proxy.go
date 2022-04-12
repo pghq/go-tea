@@ -52,9 +52,9 @@ func (p *Proxy) Direct(root, host string) error {
 	return nil
 }
 
-// Collect sets a custom collector for fibers
-func (p *Proxy) Collect(fn trail.FiberCollectorFunc) {
-	p.trace.Collect(fn)
+// WithSpanHandler adds a custom span handler to the proxy
+func (p *Proxy) WithSpanHandler(fn func(w http.ResponseWriter, r *http.Request, bundle []trail.Fiber)) {
+	p.trace.WithSpanHandler(fn)
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
