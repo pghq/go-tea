@@ -12,14 +12,14 @@ import (
 
 // TraceMiddleware is an implementation of the sentry middleware
 type TraceMiddleware struct {
-	version   string
-	collector FiberCollectorFunc
+	version string
+	handler func(w http.ResponseWriter, r *http.Request, bundle []Fiber)
 }
 
 // Handle provides an http handler for handling exceptions
 func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sw := httpSpanWriter{ResponseWriter: w}
+		sw := httpSpanWriter{ResponseWriter: w, r: r, handler: m.handler}
 		ctx := r.Context()
 		hub := sentry.GetHubFromContext(ctx)
 		if hub == nil {
@@ -27,11 +27,10 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := StartSpan(ctx, "http.request",
+		span := StartSpan(ctx, "httpRequest",
 			WithSpanRequest(r),
 			WithSpanWriter(&sw),
 			WithSpanVersion(m.version),
-			WithSpanCollector(m.collector),
 		)
 
 		defer span.Finish()
@@ -46,9 +45,9 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 	})
 }
 
-// Collect sets a custom collector for fibers
-func (m *TraceMiddleware) Collect(fn FiberCollectorFunc) {
-	m.collector = fn
+// WithSpanHandler adds a custom span handler to the middleware
+func (m *TraceMiddleware) WithSpanHandler(fn func(w http.ResponseWriter, r *http.Request, bundle []Fiber)) {
+	m.handler = fn
 }
 
 // NewTraceMiddleware constructs a new middleware that handles exceptions
@@ -61,6 +60,8 @@ func NewTraceMiddleware(version string) *TraceMiddleware {
 type httpSpanWriter struct {
 	statusCode int
 	http.ResponseWriter
+	r       *http.Request
+	handler func(w http.ResponseWriter, r *http.Request, bundle []Fiber)
 }
 
 func (w *httpSpanWriter) WriteHeader(statusCode int) {
@@ -98,7 +99,7 @@ func (w *httpSpanWriter) WriteSpan(s *Span) {
 		Spans:     spans,
 	}
 
-	if s.collector != nil {
+	if w.handler != nil {
 		fibers := []Fiber{fiber}
 		for {
 			var fiber Fiber
@@ -107,7 +108,7 @@ func (w *httpSpanWriter) WriteSpan(s *Span) {
 			}
 			fibers = append(fibers, fiber)
 		}
-		s.collector(fibers)
+		w.handler(w, w.r, fibers)
 	} else {
 		_ = compressHeader(w.ResponseWriter, "Trail-Fiber", &fiber)
 	}

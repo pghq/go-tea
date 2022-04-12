@@ -42,7 +42,7 @@ func Send(w http.ResponseWriter, r *http.Request, raw interface{}) {
 // sendError replies to the request with an error
 // and emits fatal http errors to global log and monitor.
 func sendError(w http.ResponseWriter, r *http.Request, err error) {
-	span := trail.StartSpan(r.Context(), "http.error")
+	span := trail.StartSpan(r.Context(), "httpError")
 	defer span.Finish()
 
 	msg := err.Error()
