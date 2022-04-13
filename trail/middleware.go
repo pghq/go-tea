@@ -27,7 +27,7 @@ func (m TraceMiddleware) Handle(next http.Handler) http.Handler {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := StartSpan(ctx, "httpRequest",
+		span := StartSpan(ctx, "Trail.HTTPRequest",
 			WithSpanRequest(r),
 			WithSpanWriter(&sw),
 			WithSpanVersion(m.version),
