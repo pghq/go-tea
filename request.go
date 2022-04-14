@@ -24,14 +24,21 @@ const (
 )
 
 var (
-	// dec is a global request decoder.
-	dec *schema.Decoder
+	// pathDec is a global request path decoder.
+	pathDec *schema.Decoder
+
+	// queryDec is a global request query decoder.
+	queryDec *schema.Decoder
 )
 
 func init() {
-	dec = schema.NewDecoder()
-	dec.ZeroEmpty(true)
-	dec.SetAliasTag("json")
+	pathDec = schema.NewDecoder()
+	pathDec.ZeroEmpty(true)
+	pathDec.SetAliasTag("path")
+
+	queryDec = schema.NewDecoder()
+	queryDec.ZeroEmpty(true)
+	queryDec.SetAliasTag("query")
 }
 
 // Parse is a method to decode a http request into a value
@@ -41,7 +48,7 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		return trail.NewError("no value")
 	}
 
-	if r.Body != http.NoBody {
+	if r.Method != http.MethodGet && r.Body != http.NoBody {
 		b, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, maxUploadSize))
 		if err != nil {
 			return trail.ErrorBadRequest(err)
@@ -82,7 +89,7 @@ func parseURL(r *http.Request, v interface{}) error {
 		return trail.NewError("no value")
 	}
 
-	if err := dec.Decode(v, r.URL.Query()); err != nil {
+	if err := queryDec.Decode(v, r.URL.Query()); err != nil {
 		return trail.ErrorBadRequest(err)
 	}
 
@@ -97,7 +104,7 @@ func parseURL(r *http.Request, v interface{}) error {
 		return parameters
 	}
 
-	if err := dec.Decode(v, path(r)); err != nil {
+	if err := pathDec.Decode(v, path(r)); err != nil {
 		return trail.ErrorBadRequest(err)
 	}
 

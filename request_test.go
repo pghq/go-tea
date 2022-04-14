@@ -279,7 +279,7 @@ func TestParseURL(t *testing.T) {
 
 	t.Run("can decode query", func(t *testing.T) {
 		var query struct {
-			QueryData string `json:"data"`
+			QueryData string `query:"data"`
 		}
 		req := httptest.NewRequest("GET", "/tests?data=test", nil)
 		req.Header.Set("Content-Type", "application/json")
@@ -296,7 +296,7 @@ func TestParseURL(t *testing.T) {
 
 	t.Run("raises bad query errors", func(t *testing.T) {
 		var query struct {
-			First int `json:"first"`
+			First int `query:"first"`
 		}
 
 		req := httptest.NewRequest("GET", "/tests?first=three", nil)
@@ -306,7 +306,7 @@ func TestParseURL(t *testing.T) {
 
 	t.Run("raises bad path errors", func(t *testing.T) {
 		var query struct {
-			Test int `json:"test"`
+			Test int `path:"test"`
 		}
 
 		req := httptest.NewRequest("GET", "/tests/:test", nil)
