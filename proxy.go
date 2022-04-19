@@ -19,8 +19,8 @@ import (
 type Proxy struct {
 	directors   map[string]*httputil.ReverseProxy
 	middlewares []Middleware
-	cors        CORSMiddleware
-	trace       *trail.TraceMiddleware
+	cors        Middleware
+	trace       MiddlewareFunc
 	health      *health.Service
 }
 
@@ -50,11 +50,6 @@ func (p *Proxy) Direct(root, host string) error {
 
 	p.health.AddDependency(root, fmt.Sprintf("%s://%s/health/status", hostURL.Scheme, hostURL.Host))
 	return nil
-}
-
-// WithSpanHandler adds a custom span handler to the proxy
-func (p *Proxy) WithSpanHandler(fn func(w http.ResponseWriter, r *http.Request, bundle []trail.Fiber)) {
-	p.trace.WithSpanHandler(fn)
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {

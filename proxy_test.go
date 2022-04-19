@@ -5,8 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/pghq/go-tea/trail"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,7 +37,6 @@ func TestProxy_ServeHTTP(t *testing.T) {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 		defer s.Close()
 		p := NewProxy("")
-		p.WithSpanHandler(func(w http.ResponseWriter, r *http.Request, bundle []trail.Fiber) {})
 		p.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				r.Header.Add("Test", "1")
