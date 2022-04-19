@@ -57,7 +57,7 @@ func NewRouter(semver string) *Router {
 	}
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
-	r.Middleware(trail.NewTraceMiddleware(v.String()))
+	r.Middleware(MiddlewareFunc(trail.NewTraceMiddleware(v.String())))
 	return &r
 }
 

@@ -2,13 +2,10 @@ package trail
 
 import (
 	"context"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/google/uuid"
 )
 
 func TestStartSpan(t *testing.T) {
@@ -31,7 +28,7 @@ func TestSpan_Capture(t *testing.T) {
 	t.Parallel()
 
 	t.Run("with request", func(t *testing.T) {
-		span := StartSpan(context.TODO(), "request", WithSpanRequest(httptest.NewRequest("", "/test", nil)))
+		span := StartSpan(context.TODO(), "request")
 		span.Capture(NewError("a message"))
 	})
 }
@@ -43,6 +40,7 @@ func TestSpan_SetTag(t *testing.T) {
 		span := StartSpan(context.TODO(), "test")
 		defer span.Finish()
 		span.Tags.Set("key", "value")
+		assert.NotNil(t, span.sentryHub())
 		assert.Equal(t, "value", span.Tags.Get("key"))
 	})
 
@@ -72,13 +70,11 @@ func TestSpan_Bundle(t *testing.T) {
 	})
 }
 
-func TestWithSpanRequest(t *testing.T) {
-	t.Run("detects request id", func(t *testing.T) {
-		span := StartSpan(context.TODO(), "test", WithSpanRequest(&http.Request{
-			Header: map[string][]string{
-				"Request-Id": {uuid.NewString()},
-			},
-		}))
+func TestSpan_SetResponse(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		span := StartSpan(context.TODO(), "test")
 		defer span.Finish()
+
+		span.SetResponse(httptest.NewRecorder())
 	})
 }

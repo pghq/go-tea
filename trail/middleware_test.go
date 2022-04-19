@@ -1,81 +1,31 @@
 package trail
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestCompressHeader(t *testing.T) {
-	t.Parallel()
-
-	data := map[string][]string{"permissions": {"read:foo"}}
-	t.Run("encodes", func(t *testing.T) {
+func TestNewTraceMiddleware(t *testing.T) {
+	t.Run("bad trail request header", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/test", nil)
+		r.Header.Set("Request-Trail", "{{bad}}")
 		w := httptest.NewRecorder()
-		assert.Nil(t, compressHeader(w, "data", &data))
+		m := NewTraceMiddleware("1.0.0")
+		m(http.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {}))).ServeHTTP(w, r)
 	})
 
-	t.Run("bad data", func(t *testing.T) {
+	t.Run("panic", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
-		assert.NotNil(t, compressHeader(w, "data", func() {}))
+		m := NewTraceMiddleware("1.0.0")
+		m(http.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) { panic("not impl") }))).ServeHTTP(w, r)
 	})
-}
 
-func TestDecompressHeader(t *testing.T) {
-	t.Parallel()
-
-	data := map[string][]string{"permissions": {"read:foo"}}
-	t.Run("encodes", func(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		r := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
-		assert.Nil(t, compressHeader(w, "data", &data))
-
-		var value map[string][]string
-		err := decompressHeader(w, "data", &value)
-		assert.Nil(t, err)
-		assert.NotNil(t, value)
-		assert.Equal(t, &value, &data)
-	})
-
-	t.Run("missing header", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		assert.NotNil(t, decompressHeader(w, "data", nil))
-	})
-
-	t.Run("bad key", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		w.Header().Set("data", fmt.Sprintf("%d", ^uint(0)))
-		assert.NotNil(t, decompressHeader(w, "data", nil))
-	})
-}
-
-func TestTraceMiddleware_Handle(t *testing.T) {
-	t.Parallel()
-
-	t.Run("recovers from panic", func(t *testing.T) {
-		m := NewTraceMiddleware("")
-		m.WithSpanHandler(func(w http.ResponseWriter, r *http.Request, bundle []Fiber) {})
-		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			panic("panic")
-		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
-	})
-
-	t.Run("writes fiber header", func(t *testing.T) {
-		m := NewTraceMiddleware("")
-		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusNoContent)
-		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
-	})
-
-	t.Run("collects fibers", func(t *testing.T) {
-		m := NewTraceMiddleware("")
-		m.WithSpanHandler(func(w http.ResponseWriter, r *http.Request, bundle []Fiber) {})
-		m.Handle(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			_ = compressHeader(w, "Trail-Fiber", Fiber{})
-			_ = compressHeader(w, "Trail-Fiber", Fiber{})
-			w.WriteHeader(http.StatusNoContent)
-		})).ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/test", nil))
+		m := NewTraceMiddleware("1.0.0")
+		m(http.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) { writer.WriteHeader(200) }))).ServeHTTP(w, r)
 	})
 }

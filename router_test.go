@@ -103,7 +103,7 @@ func TestRouter_Middleware(t *testing.T) {
 		r := NewRouter("0")
 		r.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusNoContent)
+				w.WriteHeader(204)
 			})
 		}))
 		req := NewRequestBuilder(t).
@@ -291,7 +291,9 @@ func RequestTest(t *testing.T, r *Router, b *RequestBuilder) {
 	}
 
 	handlerFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(want.StatusCode)
+		if want.StatusCode != 200 {
+			w.WriteHeader(want.StatusCode)
+		}
 
 		if len(expected) > 0 {
 			_, err := w.Write(expected)
