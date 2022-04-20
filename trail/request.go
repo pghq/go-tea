@@ -63,14 +63,10 @@ type Location struct {
 }
 
 // SetProfile sets a custom profile for the request
-func (r *Request) SetProfile(profile interface{}) error {
-	b, err := json.Marshal(profile)
-	if err != nil {
-		return Stacktrace(err)
+func (r *Request) SetProfile(profile interface{}) {
+	if b, err := json.Marshal(profile); err == nil {
+		r.profile = b
 	}
-
-	r.profile = b
-	return nil
 }
 
 // Profile decodes the profile into the value
@@ -130,7 +126,9 @@ func (r *Request) Finish() {
 	for {
 		select {
 		case op := <-r.root.bundle.spans:
-			r.operations = append(r.operations, *op)
+			if !op.EndTime.IsZero() {
+				r.operations = append(r.operations, *op)
+			}
 		default:
 			r.response.Send()
 			return

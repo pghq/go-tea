@@ -103,12 +103,12 @@ func TestNewRequest(t *testing.T) {
 			assert.NotNil(t, req.Location())
 			assert.Equal(t, 200, req.Status())
 
-			assert.Nil(t, req.SetProfile("foo"))
+			req.SetProfile("foo")
 
 			var profile string
 			assert.Nil(t, req.Profile(&profile))
 			assert.Equal(t, "foo", profile)
-			assert.NotNil(t, req.SetProfile(func() {}))
+			req.SetProfile(func() {})
 		})
 
 		t.Run("can add response", func(t *testing.T) {
