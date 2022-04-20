@@ -81,8 +81,7 @@ func StartSpan(ctx context.Context, operation string) *Span {
 	node = Span{
 		Operation: operation,
 		StartTime: time.Now(),
-
-		ctx: context.WithValue(ctx, spanContextKey{}, &node),
+		ctx:       context.WithValue(ctx, spanContextKey{}, &node),
 	}
 
 	if hasParent {
