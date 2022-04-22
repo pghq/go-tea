@@ -92,6 +92,12 @@ func StartSpan(ctx context.Context, operation string) *Span {
 		node.bundle = &bundle{}
 	}
 
+	if node.Request == nil {
+		node.Request = &Request{
+			root: &node,
+		}
+	}
+
 	node.sentry = sentry.StartSpan(ctx, operation)
 	node.bundle.add(&node)
 
