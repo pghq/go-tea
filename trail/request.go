@@ -160,7 +160,9 @@ func (r *Request) Finish() {
 				r.operations = append(r.operations, *op)
 			}
 		default:
-			r.response.Send()
+			if r.response != nil {
+				r.response.Send()
+			}
 			return
 		}
 	}
@@ -278,13 +280,18 @@ func (r *Request) Referrer() string {
 
 // Trail gets the encoded request trail
 func (r *Request) Trail() string {
+	var uri string
+	if r.url != nil {
+		uri = r.url.String()
+	}
+
 	b, _ := json.Marshal(serializedRequest{
 		RequestId:    r.requestId,
 		UserId:       r.userId,
 		Status:       r.status,
 		UserAgent:    r.userAgent,
 		Version:      r.version,
-		URL:          r.url.String(),
+		URL:          uri,
 		IP:           r.ip,
 		Location:     r.location,
 		Factors:      r.factors,
