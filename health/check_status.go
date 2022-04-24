@@ -15,12 +15,15 @@ type StatusResponse struct {
 	Version string              `json:"version"`
 	Status  Status              `json:"status"`
 	Checks  map[string][]*Check `json:"checks"`
+
+	mutex sync.Mutex
 }
 
 // WithCheck adds a new check to the response
 func (s *StatusResponse) WithCheck(key string, check *Check) *StatusResponse {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.Checks[key] = append(s.Checks[key], check)
-
 	return s
 }
 
@@ -33,7 +36,6 @@ func (s Service) Status() *StatusResponse {
 		Status:  StatusHealthy,
 	}
 
-	mutex := sync.Mutex{}
 	status.WithCheck(UptimeCheckKey, s.Uptime())
 	wg := sync.WaitGroup{}
 	for _, dep := range s.dependencies {
@@ -41,9 +43,6 @@ func (s Service) Status() *StatusResponse {
 		go func(dep dependency) {
 			defer wg.Done()
 			check := NewDependencyCheck(s.now(), dep.url)
-			mutex.Lock()
-			defer mutex.Unlock()
-
 			if check.Status != StatusHealthy {
 				status.Status = StatusHealthyWithConcerns
 			}
