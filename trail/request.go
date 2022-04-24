@@ -124,9 +124,9 @@ func (r *Request) UserId() *uuid.UUID {
 	return r.userId
 }
 
-// AddResponse decodes the trail request from a response header
-func (r *Request) AddResponse(w http.ResponseWriter) {
-	if header := w.Header().Get("Request-Trail"); header != "" {
+// AddResponseHeaders decodes the trail request from a response header
+func (r *Request) AddResponseHeaders(headers http.Header) {
+	if header := headers.Get("Request-Trail"); header != "" {
 		var data serializedRequest
 		b, _ := base64.StdEncoding.DecodeString(header)
 		b, _ = dec.DecodeAll(b, nil)

@@ -109,8 +109,8 @@ func (s *Span) SetRequest(r *Request) {
 	s.Request = r
 }
 
-func (s *Span) SetResponse(w http.ResponseWriter) {
-	s.Request.AddResponse(w)
+func (s *Span) AddResponseHeaders(headers http.Header) {
+	s.Request.AddResponseHeaders(headers)
 }
 
 // Tags for custom data

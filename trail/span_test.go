@@ -75,6 +75,6 @@ func TestSpan_SetResponse(t *testing.T) {
 		span := StartSpan(context.TODO(), "test")
 		defer span.Finish()
 
-		span.SetResponse(httptest.NewRecorder())
+		span.AddResponseHeaders(httptest.NewRecorder().Header())
 	})
 }
