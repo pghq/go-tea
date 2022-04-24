@@ -71,7 +71,12 @@ func TestService_Status(t *testing.T) {
 
 	t.Run("handles status requests with dependencies", func(t *testing.T) {
 		t.Run("bad dependency url", func(t *testing.T) {
-			assert.Equal(t, StatusUnhealthy, NewDependencyCheck(time.Now(), "http//").Status)
+			dep := NewDependencyCheck(time.Now(), "http//")
+			assert.Equal(t, StatusUnhealthy, dep.Status)
+
+			s := NewService("0.0.1")
+			s.AddDependency("dep", "http//")
+			assert.Equal(t, StatusHealthyWithConcerns, s.Status().Status)
 		})
 
 		t.Run("bad dependency response", func(t *testing.T) {
