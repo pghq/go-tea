@@ -118,7 +118,7 @@ func TestNewRequest(t *testing.T) {
 		t.Run("can add response", func(t *testing.T) {
 			req, _ := NewRequest(w, r, "1.0.0")
 			w.Header().Set("Request-Trail", "KLUv/UQAVQLdCgAy2UchQGkrAG2gmO1YTbhx7HPCGS/J3AQIx3HZZD8ceXHppasID3xdFnp0Ash82IOZU3IGT1NuKn10Zth4X1tKGcxgU5Adh3fs4k2J0+EbITlUqkgiPRy+Kk0jc/RlJTLNnQL4hjazsHTzOcShXsvtDnDrWK1Nz7FVfUTm1WRywESaWBB6Hj2PA/9elI4FsEKY3NjLba+2NrEZN7mUHJvyDnxDlyojcvQ4NcpFcXQBwwJCgQDBcPhWJMhCmaMvQxmJSY5em64Ah1fQxdHZYOM4vLIkDW2FI+YE3yxqrM3Rj/la4hbdQtw267gSmWsRqntnau+YLMauuyQOX5VODNBuFkdvNZlcMT2ZkE3t4r631rKUb+N8K0lEO/w01KYXCU3vBBUAT5dFCDSiCzqMZADDw1Blw09FwVocdChWVRkB70JJgueV2IYGRhCC/MJrM0KCEMvnAsEtDnSnGWGuPEE=")
-			req.AddResponse(w)
+			req.AddResponseHeaders(w.Header())
 		})
 	})
 
