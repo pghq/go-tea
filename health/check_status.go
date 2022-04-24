@@ -33,17 +33,27 @@ func (s Service) Status() *StatusResponse {
 		Status:  StatusHealthy,
 	}
 
+	mutex := sync.Mutex{}
 	status.WithCheck(UptimeCheckKey, s.Uptime())
 	wg := sync.WaitGroup{}
 	for _, dep := range s.dependencies {
 		wg.Add(1)
 		go func(dep dependency) {
 			defer wg.Done()
-			status.WithCheck(dep.name, NewDependencyCheck(s.now(), dep.url))
+			check := NewDependencyCheck(s.now(), dep.url)
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			if check.Status != StatusHealthy {
+				status.Status = StatusHealthyWithConcerns
+			}
+
+			status.WithCheck(dep.name, check)
 		}(dep)
 	}
 
 	wg.Wait()
+
 	return &status
 }
 

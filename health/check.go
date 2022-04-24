@@ -10,6 +10,9 @@ const (
 	// StatusHealthy represents a healthy application state
 	StatusHealthy Status = "healthy"
 
+	// StatusHealthyWithConcerns represents a healthy with concerns application state
+	StatusHealthyWithConcerns Status = "healthyWithConcerns"
+
 	// StatusUnhealthy represents an unhealthy application state
 	StatusUnhealthy Status = "unhealthy"
 )
@@ -45,12 +48,14 @@ func NewDependencyCheck(observedAt time.Time, dependencyURL string) *Check {
 	response, err := http.Get(dependencyURL)
 	if err != nil {
 		c.Status = StatusUnhealthy
+		c.Value = err.Error()
 		return c
 	}
 
 	var check map[string]interface{}
 	if err := json.NewDecoder(response.Body).Decode(&check); err != nil {
 		c.Status = StatusUnhealthy
+		c.Value = err.Error()
 		return c
 	}
 
