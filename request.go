@@ -38,6 +38,7 @@ func init() {
 
 	queryDec = schema.NewDecoder()
 	queryDec.ZeroEmpty(true)
+	queryDec.IgnoreUnknownKeys(true)
 	queryDec.SetAliasTag("query")
 }
 

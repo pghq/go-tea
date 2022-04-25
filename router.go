@@ -30,10 +30,6 @@ func (r *Router) Route(method, endpoint string, handlerFunc http.HandlerFunc, mi
 
 // Middleware adds a handler to execute before/after the principle request handler
 func (r *Router) Middleware(middlewares ...Middleware) {
-	for _, m := range middlewares {
-		r.routes.Use(m.Handle)
-	}
-
 	r.middlewares = append(r.middlewares, middlewares...)
 }
 
