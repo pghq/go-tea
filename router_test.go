@@ -262,15 +262,23 @@ func TestHTTPQuery(t *testing.T) {
 	})
 
 	t.Run("ok", func(t *testing.T) {
+		r := NewRouter("0")
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/test?id=one", nil)
+		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
+		req.Header.Set("Authorization", "Bearer foo")
 
 		type test struct {
-			Id string `json:"id"`
+			AccessToken string `auth:"bearer"`
+			Id          string `json:"id"`
 		}
 
-		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, nil })
-		query.ServeHTTP(resp, req)
+		h := func(ctx context.Context, query test) (interface{}, error) {
+			assert.Equal(t, "one", query.Id)
+			assert.Equal(t, "foo", query.AccessToken)
+			return nil, nil
+		}
+		r.Route("GET", "/test", HTTPQuery(h))
+		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 204, resp.Code)
 	})

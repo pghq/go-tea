@@ -74,10 +74,6 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		}
 	}
 
-	if err := newHeaderDecoder(r).decode(v); err != nil {
-		return trail.ErrorBadRequest(err)
-	}
-
 	return parseURL(r, v)
 }
 
@@ -88,6 +84,10 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 func parseURL(r *http.Request, v interface{}) error {
 	if v == nil {
 		return trail.NewError("no value")
+	}
+
+	if err := newHeaderDecoder(r).decode(v); err != nil {
+		return trail.ErrorBadRequest(err)
 	}
 
 	if err := queryDec.Decode(v, r.URL.Query()); err != nil {
