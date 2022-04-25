@@ -79,6 +79,7 @@ func StartSpan(ctx context.Context, operation string) *Span {
 	parent, hasParent := ctx.Value(spanContextKey{}).(*Span)
 	var node Span
 	node = Span{
+		SpanId:    uuid.New(),
 		Operation: operation,
 		StartTime: time.Now(),
 		ctx:       context.WithValue(ctx, spanContextKey{}, &node),
