@@ -125,6 +125,7 @@ func (r *Request) AddResponseHeaders(headers http.Header) {
 // Finish ends the current request and sends a response
 func (r *Request) Finish() {
 	r.root.Finish()
+	r.operations = append(r.operations, *r.root)
 	for {
 		select {
 		case op := <-r.root.bundle.spans:
