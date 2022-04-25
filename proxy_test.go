@@ -41,20 +41,15 @@ func TestProxy_ServeHTTP(t *testing.T) {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				r.Header.Add("Test", "1")
 				next.ServeHTTP(w, r)
+				for _, v := range r.Header.Values("Test") {
+					w.Header().Add("Test", v)
+				}
 			})
 		}))
 		p.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				next.ServeHTTP(w, r)
 				r.Header.Add("Test", "2")
-			})
-		}))
-		p.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
-			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				next.ServeHTTP(w, r)
-				for _, v := range r.Header.Values("Test") {
-					w.Header().Add("Test", v)
-				}
 			})
 		}))
 		err := p.Direct("test", s.URL)

@@ -72,7 +72,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, m := range middlewares {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		m := middlewares[i]
 		handler = m.Handle(handler)
 	}
 
