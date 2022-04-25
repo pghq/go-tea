@@ -249,15 +249,14 @@ func TestHTTPQuery(t *testing.T) {
 	})
 
 	t.Run("handler error", func(t *testing.T) {
+		r := NewRouter("0")
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/test?id=one", nil)
+		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
 
-		type test struct {
-			Id string `json:"id"`
-		}
-
-		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, trail.NewError("an error") })
-		query.ServeHTTP(resp, req)
+		type query struct{}
+		h := func(ctx context.Context, query query) (string, error) { return "", trail.NewError("an error") }
+		r.Route("GET", "/test", HTTPQuery(h))
+		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 500, resp.Code)
 	})

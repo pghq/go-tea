@@ -357,7 +357,7 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 	req.origin = r.WithContext(span.Context())
 	req.root = span
 	span.SetRequest(&req)
-	req.response = &httpSpanWriter{ResponseWriter: w, r: &req}
+	req.response = &httpSpanWriter{w: w, r: &req}
 	return &req, nil
 }
 

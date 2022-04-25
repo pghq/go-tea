@@ -26,6 +26,9 @@ func TestNewTraceMiddleware(t *testing.T) {
 		r := httptest.NewRequest("GET", "/test", nil)
 		w := httptest.NewRecorder()
 		m := NewTraceMiddleware("1.0.0")
-		m(http.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) { writer.WriteHeader(200) }))).ServeHTTP(w, r)
+		m(http.Handler(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(200)
+			_, _ = writer.Write([]byte("hello"))
+		}))).ServeHTTP(w, r)
 	})
 }
