@@ -16,7 +16,6 @@ func NewTraceMiddleware(version string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			defer req.Finish()
 			defer func() {
 				if err := recover(); err != nil {
 					req.Recover(err)
