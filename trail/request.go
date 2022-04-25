@@ -38,8 +38,6 @@ type Request struct {
 	url       *url.URL
 	ip        net.IP
 	referrer  string
-	startTime time.Time
-	endTime   time.Time
 	root      *Span
 
 	userId       *uuid.UUID
@@ -211,7 +209,7 @@ func (r *Request) Factors() []uuid.UUID {
 
 // Duration gets the duration of the request
 func (r *Request) Duration() time.Duration {
-	return r.endTime.Sub(r.startTime)
+	return r.root.EndTime.Sub(r.root.StartTime)
 }
 
 // AddDemographics adds custom demographic information to the request
@@ -268,8 +266,8 @@ func (r *Request) Trail() string {
 		Factors:      r.factors,
 		Demographics: r.demographics,
 		Operations:   r.operations,
-		StartTime:    r.startTime,
-		EndTime:      r.endTime,
+		StartTime:    r.root.StartTime,
+		EndTime:      r.root.EndTime,
 		Profile:      r.profile,
 		Root:         r.root,
 		Referrer:     r.referrer,
@@ -315,7 +313,6 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 		req = Request{
 			requestId: uuid.New(),
 			userAgent: r.UserAgent(),
-			startTime: time.Now(),
 			url:       r.URL,
 			ip:        net.ParseIP(r.Header.Get("X-Forwarded-For")),
 			version:   version,
@@ -363,8 +360,6 @@ func (h serializedRequest) Request() Request {
 		operations:   h.Operations,
 		demographics: h.Demographics,
 		profile:      h.Profile,
-		startTime:    h.StartTime,
-		endTime:      h.EndTime,
 		root:         h.Root,
 		referrer:     h.Referrer,
 	}
