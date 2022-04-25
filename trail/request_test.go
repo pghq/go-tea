@@ -96,16 +96,12 @@ func TestNewRequest(t *testing.T) {
 			req.SetLocation(&Location{})
 			req.SetStatus(200)
 			req.SetUserId(uuid.New())
-			req.SetPrimaryId(uuid.New())
-			req.SetSecondaryId(uuid.New())
 
 			assert.NotNil(t, req.UserId())
 			assert.NotEmpty(t, req.Factors())
 			assert.NotEmpty(t, req.Demographics())
 			assert.NotNil(t, req.Location())
 			assert.Equal(t, 200, req.Status())
-			assert.NotEqual(t, uuid.Nil, req.PrimaryId())
-			assert.NotEqual(t, uuid.Nil, req.SecondaryId())
 
 			req.SetProfile("foo")
 

@@ -29,20 +29,18 @@ func init() {
 
 // Request represents a request with trail trace support enabled
 type Request struct {
-	origin      *http.Request
-	response    *httpSpanWriter
-	requestId   uuid.UUID
-	primaryId   *uuid.UUID
-	secondaryId *uuid.UUID
-	userAgent   string
-	status      int
-	version     string
-	url         *url.URL
-	ip          net.IP
-	referrer    string
-	startTime   time.Time
-	endTime     time.Time
-	root        *Span
+	origin    *http.Request
+	response  *httpSpanWriter
+	requestId uuid.UUID
+	userAgent string
+	status    int
+	version   string
+	url       *url.URL
+	ip        net.IP
+	referrer  string
+	startTime time.Time
+	endTime   time.Time
+	root      *Span
 
 	userId       *uuid.UUID
 	profile      []byte
@@ -62,34 +60,6 @@ type Location struct {
 	Longitude     float64 `json:"longitude,omitempty"`
 	TimeZone      string  `json:"timeZone,omitempty"`
 	ContinentCode string  `json:"continentCode,omitempty"`
-}
-
-// SetPrimaryId sets the primary subject of the request
-func (r *Request) SetPrimaryId(primaryId uuid.UUID) {
-	r.primaryId = &primaryId
-}
-
-// PrimaryId gets the primary id of the request
-func (r *Request) PrimaryId() uuid.UUID {
-	var primaryId uuid.UUID
-	if r.primaryId != nil {
-		primaryId = *r.primaryId
-	}
-	return primaryId
-}
-
-// SetSecondaryId sets the secondary subject of the request
-func (r *Request) SetSecondaryId(secondaryId uuid.UUID) {
-	r.secondaryId = &secondaryId
-}
-
-// SecondaryId gets the secondary id of the request
-func (r *Request) SecondaryId() uuid.UUID {
-	var secondaryId uuid.UUID
-	if r.secondaryId != nil {
-		secondaryId = *r.secondaryId
-	}
-	return secondaryId
 }
 
 // SetProfile sets a custom profile for the request
@@ -147,6 +117,10 @@ func (r *Request) AddResponseHeaders(headers http.Header) {
 		if r.location == nil && data.Location != nil {
 			r.SetLocation(data.Location)
 		}
+
+		if r.userId == nil && data.UserId != nil {
+			r.SetUserId(*data.UserId)
+		}
 	}
 }
 
@@ -160,9 +134,6 @@ func (r *Request) Finish() {
 				r.operations = append(r.operations, *op)
 			}
 		default:
-			if r.response != nil {
-				r.response.Send()
-			}
 			return
 		}
 	}
@@ -302,8 +273,6 @@ func (r *Request) Trail() string {
 		Profile:      r.profile,
 		Root:         r.root,
 		Referrer:     r.referrer,
-		PrimaryId:    r.primaryId,
-		SecondaryId:  r.secondaryId,
 	})
 
 	var trail string
@@ -378,8 +347,6 @@ type serializedRequest struct {
 	EndTime      time.Time              `json:"endTime"`
 	Root         *Span                  `json:"root,omitempty"`
 	Referrer     string                 `json:"referrer,omitempty"`
-	PrimaryId    *uuid.UUID             `json:"primaryId,omitempty"`
-	SecondaryId  *uuid.UUID             `json:"secondaryId,omitempty"`
 }
 
 // Request gets a trail request from a serialized one
@@ -400,8 +367,6 @@ func (h serializedRequest) Request() Request {
 		endTime:      h.EndTime,
 		root:         h.Root,
 		referrer:     h.Referrer,
-		primaryId:    h.PrimaryId,
-		secondaryId:  h.SecondaryId,
 	}
 
 	r.url, _ = url.Parse(h.URL)
