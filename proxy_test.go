@@ -65,5 +65,6 @@ func TestProxy_ServeHTTP(t *testing.T) {
 		p.ServeHTTP(w, r)
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Equal(t, []string{"1", "2"}, w.Header().Values("Test"))
+		assert.Empty(t, w.Header().Get("Request-Trail"))
 	})
 }

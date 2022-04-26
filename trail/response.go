@@ -5,8 +5,9 @@ import (
 )
 
 type httpSpanWriter struct {
-	r *Request
-	w http.ResponseWriter
+	r           *Request
+	w           http.ResponseWriter
+	trailHeader bool
 }
 
 func (w *httpSpanWriter) WriteHeader(statusCode int) {
@@ -14,7 +15,10 @@ func (w *httpSpanWriter) WriteHeader(statusCode int) {
 	w.r.SetStatus(statusCode)
 	w.r.Finish()
 
-	w.Header().Set("Request-Trail", w.r.Trail())
+	if w.trailHeader {
+		w.Header().Set("Request-Trail", w.r.Trail())
+	}
+
 	w.Header().Set("Request-Id", w.r.RequestId().String())
 	w.w.WriteHeader(statusCode)
 }

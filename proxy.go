@@ -91,7 +91,7 @@ func NewProxy(semver string) *Proxy {
 	p := Proxy{
 		directors: make(map[string]*httputil.ReverseProxy),
 		cors:      NewCORSMiddleware(),
-		trace:     trail.NewTraceMiddleware(cv),
+		trace:     trail.NewTraceMiddleware(cv, false),
 		health:    health.NewService(cv),
 	}
 

@@ -5,7 +5,7 @@ import (
 )
 
 // NewTraceMiddleware constructs a new middleware that handles tracing
-func NewTraceMiddleware(version string) func(next http.Handler) http.Handler {
+func NewTraceMiddleware(version string, trailHeader bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			req, err := NewRequest(w, r, version)
@@ -19,10 +19,10 @@ func NewTraceMiddleware(version string) func(next http.Handler) http.Handler {
 			defer func() {
 				if err := recover(); err != nil {
 					req.Recover(err)
-					req.Response().WriteHeader(http.StatusInternalServerError)
+					req.Response(trailHeader).WriteHeader(http.StatusInternalServerError)
 				}
 			}()
-			next.ServeHTTP(req.Response(), req.Origin())
+			next.ServeHTTP(req.Response(trailHeader), req.Origin())
 		})
 	}
 }
