@@ -242,8 +242,7 @@ func (r *Request) Demographics() []uuid.UUID {
 }
 
 // Response gets the underlying response writer
-func (r *Request) Response(trailHeader bool) http.ResponseWriter {
-	r.response.trailHeader = trailHeader
+func (r *Request) Response() http.ResponseWriter {
 	return r.response
 }
 
