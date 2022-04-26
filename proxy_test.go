@@ -36,7 +36,9 @@ func TestProxy_ServeHTTP(t *testing.T) {
 	})
 
 	t.Run("director", func(t *testing.T) {
-		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Request-Trail", "KLUv/UQAsAC1BgCijisfYEfcABUOJnFtuxCOKKEymXXHBCOIpJLlRk03FgQBiwkJz1yWqMZKFLE0p3Rz7DTNsGvO0TGZ5rwn9t007ugDm6lgyswCw0fPXJaY1MiEFEv30DWSkiRUiaqp37PBorRThVGosxy9HzfA9wj3HD2LLNL3TLM8xwhHmbp/T7d+R2/c2By+b4YPAY7fc3RGeCUHN8UGhWolgosThexICnAxJWCGxr4vCPTj54DdEwEOAH4DAkjGqD3tNkOpKnPgBZR0eDJc0wCQrLv6UOXy1bzcrxkFkVtadA==")
+		}))
 		defer s.Close()
 		p := NewProxy("")
 		p.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
