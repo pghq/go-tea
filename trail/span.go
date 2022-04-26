@@ -18,12 +18,12 @@ type spanContextKey struct{}
 
 // Span for tracing instrumentation
 type Span struct {
-	SpanId    uuid.UUID `json:"spanId"`
-	ParentId  uuid.UUID `json:"parentId"`
-	Operation string    `json:"operation"`
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
-	Tags      Tags      `json:"tags,omitempty"`
+	SpanId    uuid.UUID  `json:"spanId"`
+	ParentId  *uuid.UUID `json:"parentId,omitempty"`
+	Operation string     `json:"operation"`
+	StartTime time.Time  `json:"startTime"`
+	EndTime   time.Time  `json:"endTime"`
+	Tags      Tags       `json:"tags,omitempty"`
 
 	ctx      context.Context
 	bundle   *bundle
@@ -86,7 +86,7 @@ func StartSpan(ctx context.Context, operation string) *Span {
 	}
 
 	if hasParent {
-		node.ParentId = parent.SpanId
+		node.ParentId = &parent.SpanId
 		node.bundle = parent.bundle
 		node.Request = parent.Request
 	} else {
