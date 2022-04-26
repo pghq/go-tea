@@ -46,10 +46,6 @@ func (p *Proxy) Direct(root, host string) error {
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, string(os.PathSeparator))
 			r.URL.Path = strings.TrimPrefix(r.URL.Path, root)
 		},
-		ModifyResponse: func(response *http.Response) error {
-			response.Header.Del("Request-Trail")
-			return nil
-		},
 	}
 
 	p.health.AddDependency(root, fmt.Sprintf("%s://%s/health/status", hostURL.Scheme, hostURL.Host))
