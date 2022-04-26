@@ -19,13 +19,11 @@ func NewTraceMiddleware(version string, withTrailHeader bool) func(next http.Han
 			defer func() {
 				if err := recover(); err != nil {
 					req.Recover(err)
-					req.Response().WriteHeader(http.StatusInternalServerError)
+					req.Response(withTrailHeader).WriteHeader(http.StatusInternalServerError)
 				}
 			}()
-			next.ServeHTTP(req.Response(), req.Origin())
-			if !withTrailHeader {
-				w.Header().Del("Request-Trail")
-			}
+
+			next.ServeHTTP(req.Response(withTrailHeader), req.Origin())
 		})
 	}
 }
