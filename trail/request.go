@@ -37,6 +37,7 @@ type Request struct {
 	userAgent string
 	status    int
 	version   string
+	method    string
 	host      string
 	url       *url.URL
 	ip        net.IP
@@ -155,6 +156,11 @@ func (r *Request) UserAgent() string {
 	return r.userAgent
 }
 
+// Method gets the request method
+func (r *Request) Method() string {
+	return r.method
+}
+
 // Status gets the response status code
 func (r *Request) Status() int {
 	return r.status
@@ -264,6 +270,7 @@ func (r *Request) Trail() string {
 		UserAgent:    r.userAgent,
 		Version:      r.version,
 		URL:          uri,
+		Method:       r.method,
 		IP:           r.ip,
 		Location:     r.location,
 		Factors:      r.factors,
@@ -317,6 +324,7 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 			requestId: uuid.New(),
 			userAgent: r.UserAgent(),
 			url:       r.URL,
+			method:    r.Method,
 			ip:        net.ParseIP(r.Header.Get("X-Forwarded-For")),
 			version:   version,
 			referrer:  r.Header.Get("Referrer"),
@@ -336,6 +344,7 @@ type serializedRequest struct {
 	UserId       *uuid.UUID             `json:"userId,omitempty"`
 	Status       int                    `json:"status,omitempty"`
 	Version      string                 `json:"version,omitempty"`
+	Method       string                 `json:"method,omitempty"`
 	Host         string                 `json:"host,omitempty"`
 	URL          string                 `json:"url,omitempty"`
 	IP           net.IP                 `json:"ip,omitempty"`
@@ -359,6 +368,7 @@ func (h serializedRequest) Request() Request {
 		userAgent:    h.UserAgent,
 		version:      h.Version,
 		ip:           h.IP,
+		method:       h.Method,
 		location:     h.Location,
 		factors:      h.Factors,
 		operations:   h.Operations,
