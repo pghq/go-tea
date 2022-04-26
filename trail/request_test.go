@@ -84,6 +84,8 @@ func TestNewRequest(t *testing.T) {
 		assert.NotNil(t, req.Status())
 		assert.NotEmpty(t, req.UserAgent())
 		assert.NotEmpty(t, req.Version())
+		assert.NotEmpty(t, req.Host())
+		assert.NotEmpty(t, req.Method())
 		assert.Less(t, time.Duration(0), req.Duration())
 		assert.NotNil(t, req.IP())
 		assert.NotEmpty(t, req.Operations())
