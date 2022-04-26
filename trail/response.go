@@ -14,11 +14,7 @@ func (w *httpSpanWriter) WriteHeader(statusCode int) {
 	w.r.SetStatus(statusCode)
 	w.r.Finish()
 
-	if header := w.Header().Get("No-Request-Trail"); header == "" {
-		w.Header().Set("Request-Trail", w.r.Trail())
-	}
-
-	w.Header().Del("No-Request-Trail")
+	w.Header().Set("Request-Trail", w.r.Trail())
 	w.Header().Set("Request-Id", w.r.RequestId().String())
 	w.w.WriteHeader(statusCode)
 }
