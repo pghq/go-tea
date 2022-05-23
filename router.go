@@ -91,7 +91,7 @@ func HTTPCommand[command any](fn func(context.Context, command) error) http.Hand
 func HTTPQuery[query any, response any](fn func(context.Context, query) (response, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req query
-		if err := parseURL(r, &req); err != nil {
+		if err := Parse(w, r, &req); err != nil {
 			Send(w, r, err)
 			return
 		}
