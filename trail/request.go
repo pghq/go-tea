@@ -54,14 +54,15 @@ type Request struct {
 
 // Location of the origin request
 type Location struct {
-	CountryCode   string  `json:"countryCode,omitempty"`
-	CountryCode3  string  `json:"countryCode3,omitempty"`
-	CountryName   string  `json:"countryName,omitempty"`
-	CityName      string  `json:"cityName,omitempty"`
-	Latitude      float64 `json:"latitude,omitempty"`
-	Longitude     float64 `json:"longitude,omitempty"`
-	TimeZone      string  `json:"timeZone,omitempty"`
-	ContinentCode string  `json:"continentCode,omitempty"`
+	CountryCode     string  `json:"countryCode,omitempty"`
+	CountryCode3    string  `json:"countryCode3,omitempty"`
+	CountryName     string  `json:"countryName,omitempty"`
+	CityName        string  `json:"cityName,omitempty"`
+	Latitude        float64 `json:"latitude,omitempty"`
+	Longitude       float64 `json:"longitude,omitempty"`
+	TimeZone        string  `json:"timeZone,omitempty"`
+	ContinentCode   string  `json:"continentCode,omitempty"`
+	SubdivisionCode string  `json:"subdivisionCode,omitempty"`
 }
 
 // SetProfile sets a custom profile for the request
