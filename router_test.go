@@ -262,9 +262,9 @@ func TestHTTPQuery(t *testing.T) {
 	})
 
 	t.Run("ok", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter("0", WithServicePrefix("/service"))
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
+		req := httptest.NewRequest("GET", "/service/v0/test?id=one", nil)
 		req.Header.Set("Authorization", "Bearer foo")
 
 		type test struct {
