@@ -1,11 +1,11 @@
 package tea
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -48,7 +48,9 @@ func (p *Proxy) Direct(root, host string) error {
 		},
 	}
 
-	p.health.AddDependency(root, fmt.Sprintf("%s://%s/health/status", hostURL.Scheme, hostURL.Host))
+	healthURL := *hostURL
+	healthURL.Path = path.Join(healthURL.Path, "/health/status")
+	p.health.AddDependency(root, healthURL.String())
 	return nil
 }
 
