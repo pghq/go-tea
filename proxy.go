@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/go-version"
@@ -30,46 +29,51 @@ func (p *Proxy) Middleware(middlewares ...Middleware) {
 }
 
 // Direct sets a new director for the path
-// e.g., root is typically the name of the microservice
-func (p *Proxy) Direct(root, host string) error {
-	root = strings.Trim(root, string(os.PathSeparator))
+// e.g., pathPrefix is typically the name of the microservice
+func (p *Proxy) Direct(pathPrefix, host string) error {
 	hostURL, err := url.ParseRequestURI(host)
 	if err != nil {
 		return trail.Stacktrace(err)
 	}
-	p.directors[root] = &httputil.ReverseProxy{
+
+	p.directors[pathPrefix] = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			r.Header.Add("X-Forwarded-Host", r.Host)
 			r.Header.Add("X-Forwarded-Proto", r.URL.Scheme)
 			r.URL.Host = hostURL.Host
 			r.URL.Scheme = hostURL.Scheme
-			r.URL.Path = strings.TrimPrefix(r.URL.Path, string(os.PathSeparator))
-			r.URL.Path = strings.TrimPrefix(r.URL.Path, root)
 		},
 	}
 
 	healthURL := *hostURL
 	healthURL.Path = path.Join(healthURL.Path, "/health/status")
-	p.health.AddDependency(root, healthURL.String())
+	p.health.AddDependency(host, healthURL.String())
 	return nil
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, string(os.PathSeparator))
-	root := strings.Split(filepath.Dir(path), string(os.PathSeparator))[0]
-	director, present := p.directors[root]
 	var handler http.Handler
+	urlPath := strings.TrimPrefix(r.URL.Path, string(os.PathSeparator))
 	middlewares := []Middleware{p.cors}
-	switch {
-	case r.URL.Path == "/health/status":
+	if r.URL.Path == "/health/status" {
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			Send(w, r, p.health.Status())
 		})
-	case present:
-		handler = director
-		middlewares = append(middlewares, p.trace)
-		middlewares = append(middlewares, p.middlewares...)
-	default:
+	} else {
+		var sb strings.Builder
+		for _, dir := range strings.Split(urlPath, string(os.PathSeparator)) {
+			sb.WriteString(dir)
+			if director, present := p.directors[sb.String()]; present {
+				handler = director
+				middlewares = append(middlewares, p.trace)
+				middlewares = append(middlewares, p.middlewares...)
+				break
+			}
+			sb.WriteString("/")
+		}
+	}
+
+	if handler == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

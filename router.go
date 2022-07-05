@@ -14,9 +14,10 @@ import (
 
 // Router is an instance of a mux based Router
 type Router struct {
-	mux         *mux.Router
-	routes      *mux.Router
-	middlewares []Middleware
+	mux           *mux.Router
+	routes        *mux.Router
+	middlewares   []Middleware
+	servicePrefix string
 }
 
 // Route adds a handler for the http method and endpoint
@@ -38,9 +39,16 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // NewRouter constructs a new mux based Router
-func NewRouter(semver string) *Router {
+func NewRouter(semver string, opts ...RouterOption) *Router {
 	r := Router{mux: mux.NewRouter().StrictSlash(true)}
+	for _, opt := range opts {
+		opt(&r)
+	}
+
 	r.routes = r.mux
+	if r.servicePrefix != "" {
+		r.routes = r.routes.PathPrefix(r.servicePrefix).Subrouter()
+	}
 
 	hc := health.NewService(semver)
 	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +63,16 @@ func NewRouter(semver string) *Router {
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
 	r.Middleware(MiddlewareFunc(trail.NewTraceMiddleware(v.String(), true)))
 	return &r
+}
+
+// RouterOption is a handler for configuring the router
+type RouterOption func(r *Router)
+
+// WithServicePrefix creates a service prefix option
+func WithServicePrefix(prefix string) RouterOption {
+	return func(r *Router) {
+		r.servicePrefix = prefix
+	}
 }
 
 // NotFoundHandler is a custom handler for not found requests
