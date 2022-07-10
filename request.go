@@ -86,9 +86,7 @@ func parseURL(r *http.Request, v interface{}) error {
 		return trail.NewError("no value")
 	}
 
-	if err := newHeaderDecoder(r).decode(v); err != nil {
-		return trail.ErrorBadRequest(err)
-	}
+	newHeaderDecoder(r).decode(v)
 
 	if err := queryDec.Decode(v, r.URL.Query()); err != nil {
 		return trail.ErrorBadRequest(err)
@@ -212,21 +210,25 @@ type multipartDecoder struct {
 func (d multipartDecoder) decode(v interface{}) error {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
-		return trail.NewErrorf("item of type %T is not a struct", v)
+		return nil
 	}
 
 	t := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
-		if key := t.Field(i).Tag.Get("form"); key != "" {
-			v := rv.Field(i)
-			if v.CanSet() && v.Type().Implements(reflect.TypeOf(new(io.Reader)).Elem()) {
-				part, err := part(d.w, d.r, key)
-				if err != nil {
-					return trail.ErrorBadRequest(err)
-				}
+		field := t.Field(i)
+		v := rv.Field(i)
 
-				v.Set(reflect.ValueOf(part))
+		if !v.CanSet() {
+			continue
+		}
+
+		if key := field.Tag.Get("form"); key != "" && v.Type().Implements(reflect.TypeOf(new(io.Reader)).Elem()) {
+			part, err := part(d.w, d.r, key)
+			if err != nil {
+				return trail.ErrorBadRequest(err)
 			}
+
+			v.Set(reflect.ValueOf(part))
 		}
 	}
 
@@ -246,39 +248,44 @@ type headerDecoder struct {
 	r *http.Request
 }
 
-func (d headerDecoder) decode(v interface{}) error {
+func (d headerDecoder) decode(v interface{}) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
-		return trail.NewErrorf("item of type %T is not a struct", v)
+		return
 	}
 
 	t := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
-		if key := t.Field(i).Tag.Get("auth"); key != "" {
-			v := rv.Field(i)
-			if v.CanSet() && v.Type().String() == "string" {
-				v.Set(reflect.ValueOf(auth(d.r, key)))
-			}
+		field := t.Field(i)
+		v := rv.Field(i)
+
+		if !v.CanSet() {
+			continue
 		}
 
-		if key := t.Field(i).Tag.Get("header"); key != "" {
-			v := rv.Field(i)
-			if v.CanSet() {
-				switch v.Type().String() {
-				case "string":
-					header := d.r.Header.Get(key)
-					if header == "" {
-						header = t.Field(i).Tag.Get("default")
-					}
-					v.Set(reflect.ValueOf(header))
-				case "[]string":
-					v.Set(reflect.ValueOf(d.r.Header.Values(key)))
+		if field.Anonymous {
+			rv := reflect.New(v.Type())
+			d.decode(rv.Interface())
+			v.Set(reflect.Indirect(rv))
+		}
+
+		if key := field.Tag.Get("auth"); key != "" && v.Type().String() == "string" {
+			v.Set(reflect.ValueOf(auth(d.r, key)))
+		}
+
+		if key := field.Tag.Get("header"); key != "" {
+			switch v.Type().String() {
+			case "string":
+				header := d.r.Header.Get(key)
+				if header == "" {
+					header = t.Field(i).Tag.Get("default")
 				}
+				v.Set(reflect.ValueOf(header))
+			case "[]string":
+				v.Set(reflect.ValueOf(d.r.Header.Values(key)))
 			}
 		}
 	}
-
-	return nil
 }
 
 // newHeaderDecoder creates a new header decoder instance
