@@ -207,6 +207,17 @@ func TestParse(t *testing.T) {
 			assert.NotNil(t, err)
 		})
 
+		t.Run("unexported", func(t *testing.T) {
+			type partQuery struct {
+				file io.Reader `form:"file"`
+			}
+
+			var query partQuery
+			err := Parse(httptest.NewRecorder(), req, &query)
+			assert.Nil(t, err)
+			assert.Nil(t, query.file)
+		})
+
 		t.Run("ok", func(t *testing.T) {
 			type partQuery struct {
 				File io.Reader `form:"file"`
@@ -237,6 +248,21 @@ func TestParse(t *testing.T) {
 			err := Parse(httptest.NewRecorder(), req, &value)
 			assert.Nil(t, err)
 			assert.Equal(t, "foo", value.AccessToken)
+		})
+
+		t.Run("embedded header value", func(t *testing.T) {
+			type Embedded struct{
+				Id string `header:"X-Network-Id"`
+			}
+			var value struct {
+				Embedded
+			}
+
+			req := httptest.NewRequest("GET", "/tests", nil)
+			req.Header.Set("X-Network-Id", "foo")
+			err := Parse(httptest.NewRecorder(), req, &value)
+			assert.Nil(t, err)
+			assert.Equal(t, "foo", value.Id)
 		})
 
 		t.Run("header value string", func(t *testing.T) {
