@@ -251,7 +251,7 @@ func TestParse(t *testing.T) {
 		})
 
 		t.Run("embedded header value", func(t *testing.T) {
-			type Embedded struct{
+			type Embedded struct {
 				Id string `header:"X-Network-Id"`
 			}
 			var value struct {

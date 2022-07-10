@@ -3,7 +3,6 @@ package tea
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -233,8 +232,6 @@ func (d multipartDecoder) decode(v interface{}) error {
 		}
 	}
 
-	trail.OneOff(fmt.Sprintf("%+v", rv))
-
 	return nil
 }
 
@@ -251,7 +248,7 @@ type headerDecoder struct {
 	r *http.Request
 }
 
-func (d headerDecoder) decode(v interface{})  {
+func (d headerDecoder) decode(v interface{}) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
 		return
@@ -266,7 +263,7 @@ func (d headerDecoder) decode(v interface{})  {
 			continue
 		}
 
-		if field.Anonymous{
+		if field.Anonymous {
 			rv := reflect.New(v.Type())
 			d.decode(rv.Interface())
 			v.Set(reflect.Indirect(rv))
