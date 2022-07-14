@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"syscall"
 
 	"github.com/pkg/errors"
 )
@@ -33,7 +34,7 @@ func Stacktrace(err error) error {
 		return nil
 	}
 
-	if IsError(err, context.Canceled) {
+	if IsError(err, context.Canceled) || IsError(err, syscall.EPIPE) {
 		return stack(err, http.StatusBadRequest)
 	}
 
@@ -75,7 +76,7 @@ func NewErrorBadRequest(msg string) error {
 
 // IsBadRequest checks if an error is a bad request application error
 func IsBadRequest(err error) bool {
-	return IsError(err, context.Canceled) || err != nil && StatusCode(err) == http.StatusBadRequest
+	return IsError(err, context.Canceled) || IsError(err, syscall.EPIPE) || err != nil && StatusCode(err) == http.StatusBadRequest
 }
 
 // ErrorNoContent creates a no content error
@@ -189,7 +190,7 @@ func IsFatal(err error) bool {
 
 // StatusCode gets an HTTP status code from an error
 func StatusCode(err error) int {
-	if IsError(err, context.Canceled) {
+	if IsError(err, context.Canceled) || IsError(err, syscall.EPIPE) {
 		return http.StatusBadRequest
 	}
 
