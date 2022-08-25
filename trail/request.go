@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	"github.com/google/uuid"
 	"github.com/klauspost/compress/zstd"
+	"github.com/lithammer/shortuuid"
 )
 
 var (
@@ -33,7 +33,7 @@ func init() {
 type Request struct {
 	origin    *http.Request
 	response  *httpSpanWriter
-	requestId uuid.UUID
+	requestId string
 	userAgent string
 	status    int
 	version   string
@@ -44,12 +44,11 @@ type Request struct {
 	referrer  string
 	root      *Span
 
-	userId       *uuid.UUID
-	profile      []byte
-	location     *Location
-	factors      map[uuid.UUID]struct{}
-	operations   []Span
-	demographics map[uuid.UUID]struct{}
+	userId     string
+	profile    []byte
+	location   *Location
+	operations []Span
+	groups     map[string]struct{}
 }
 
 // Location of the origin request
@@ -88,12 +87,12 @@ func (r *Request) SetStatus(status int) {
 }
 
 // SetUserId sets a custom user for the request
-func (r *Request) SetUserId(userId uuid.UUID) {
-	r.userId = &userId
+func (r *Request) SetUserId(userId string) {
+	r.userId = userId
 }
 
 // UserId gets the user id
-func (r *Request) UserId() *uuid.UUID {
+func (r *Request) UserId() string {
 	return r.userId
 }
 
@@ -109,20 +108,16 @@ func (r *Request) AddResponseHeaders(headers http.Header) {
 			r.profile = data.Profile
 		}
 
-		for factor, _ := range data.Factors {
-			r.AddFactors(factor)
-		}
-
-		for demographic, _ := range data.Demographics {
-			r.AddDemographics(demographic)
+		for group, _ := range data.Groups {
+			r.AddGroups(group)
 		}
 
 		if r.location == nil && data.Location != nil {
 			r.SetLocation(data.Location)
 		}
 
-		if r.userId == nil && data.UserId != nil {
-			r.SetUserId(*data.UserId)
+		if r.userId == "" && data.UserId != "" {
+			r.SetUserId(data.UserId)
 		}
 	}
 }
@@ -148,7 +143,7 @@ func (r *Request) Recover(v interface{}) {
 }
 
 // RequestId gets the request id
-func (r *Request) RequestId() uuid.UUID {
+func (r *Request) RequestId() string {
 	return r.requestId
 }
 
@@ -197,49 +192,29 @@ func (r *Request) Operations() []Span {
 	return r.operations
 }
 
-// AddFactors adds custom factors to the request
-func (r *Request) AddFactors(factorIds ...uuid.UUID) {
-	if r.factors == nil {
-		r.factors = make(map[uuid.UUID]struct{})
-	}
-
-	for _, factorId := range factorIds {
-		r.factors[factorId] = struct{}{}
-	}
-}
-
-// Factors gets the request factors
-func (r *Request) Factors() []uuid.UUID {
-	var factors []uuid.UUID
-	for factor, _ := range r.factors {
-		factors = append(factors, factor)
-	}
-	return factors
-}
-
 // Duration gets the duration of the request
 func (r *Request) Duration() time.Duration {
 	return r.root.EndTime.Sub(r.root.StartTime)
 }
 
-// AddDemographics adds custom demographic information to the request
-func (r *Request) AddDemographics(demographicIds ...uuid.UUID) {
-	if r.demographics == nil {
-		r.demographics = make(map[uuid.UUID]struct{})
+// AddGroups adds custom group information to the request
+func (r *Request) AddGroups(groupIds ...string) {
+	if r.groups == nil {
+		r.groups = make(map[string]struct{})
 	}
 
-	for _, demographicId := range demographicIds {
-		r.demographics[demographicId] = struct{}{}
+	for _, groupId := range groupIds {
+		r.groups[groupId] = struct{}{}
 	}
 }
 
-// Demographics gets the demographics of the request
-func (r *Request) Demographics() []uuid.UUID {
-	var demographics []uuid.UUID
-	for demographic, _ := range r.demographics {
-		demographics = append(demographics, demographic)
+// Groups gets the groups of the request
+func (r *Request) Groups() []string {
+	var groups []string
+	for group, _ := range r.groups {
+		groups = append(groups, group)
 	}
-	return demographics
+	return groups
 }
 
 // Response gets the underlying response writer
@@ -266,23 +241,22 @@ func (r *Request) Trail() string {
 	}
 
 	b, _ := json.Marshal(serializedRequest{
-		RequestId:    r.requestId,
-		UserId:       r.userId,
-		Status:       r.status,
-		UserAgent:    r.userAgent,
-		Version:      r.version,
-		URL:          uri,
-		Method:       r.method,
-		IP:           r.ip,
-		Location:     r.location,
-		Factors:      r.factors,
-		Demographics: r.demographics,
-		Operations:   r.operations,
-		StartTime:    r.root.StartTime,
-		EndTime:      r.root.EndTime,
-		Profile:      r.profile,
-		Root:         r.root,
-		Referrer:     r.referrer,
+		RequestId:  r.requestId,
+		UserId:     r.userId,
+		Status:     r.status,
+		UserAgent:  r.userAgent,
+		Version:    r.version,
+		URL:        uri,
+		Method:     r.method,
+		IP:         r.ip,
+		Location:   r.location,
+		Groups:     r.groups,
+		Operations: r.operations,
+		StartTime:  r.root.StartTime,
+		EndTime:    r.root.EndTime,
+		Profile:    r.profile,
+		Root:       r.root,
+		Referrer:   r.referrer,
 	})
 
 	var trail string
@@ -323,7 +297,7 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 		req = data.Request()
 	} else {
 		req = Request{
-			requestId: uuid.New(),
+			requestId: shortuuid.NewWithNamespace(version),
 			userAgent: r.UserAgent(),
 			url:       r.URL,
 			method:    r.Method,
@@ -341,43 +315,41 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 }
 
 type serializedRequest struct {
-	RequestId    uuid.UUID              `json:"requestId"`
-	UserAgent    string                 `json:"userAgent"`
-	UserId       *uuid.UUID             `json:"userId,omitempty"`
-	Status       int                    `json:"status,omitempty"`
-	Version      string                 `json:"version,omitempty"`
-	Method       string                 `json:"method,omitempty"`
-	Host         string                 `json:"host,omitempty"`
-	URL          string                 `json:"url,omitempty"`
-	IP           net.IP                 `json:"ip,omitempty"`
-	Profile      []byte                 `json:"profile,omitempty"`
-	Location     *Location              `json:"location,omitempty"`
-	Factors      map[uuid.UUID]struct{} `json:"factors,omitempty"`
-	Demographics map[uuid.UUID]struct{} `json:"demographics,omitempty"`
-	Operations   []Span                 `json:"operations,omitempty"`
-	StartTime    time.Time              `json:"startTime"`
-	EndTime      time.Time              `json:"endTime"`
-	Root         *Span                  `json:"root,omitempty"`
-	Referrer     string                 `json:"referrer,omitempty"`
+	RequestId  string              `json:"requestId"`
+	UserAgent  string              `json:"userAgent"`
+	UserId     string              `json:"userId,omitempty"`
+	Status     int                 `json:"status,omitempty"`
+	Version    string              `json:"version,omitempty"`
+	Method     string              `json:"method,omitempty"`
+	Host       string              `json:"host,omitempty"`
+	URL        string              `json:"url,omitempty"`
+	IP         net.IP              `json:"ip,omitempty"`
+	Profile    []byte              `json:"profile,omitempty"`
+	Location   *Location           `json:"location,omitempty"`
+	Groups     map[string]struct{} `json:"groups,omitempty"`
+	Operations []Span              `json:"operations,omitempty"`
+	StartTime  time.Time           `json:"startTime"`
+	EndTime    time.Time           `json:"endTime"`
+	Root       *Span               `json:"root,omitempty"`
+	Referrer   string              `json:"referrer,omitempty"`
 }
 
 // Request gets a trail request from a serialized one
 func (h serializedRequest) Request() Request {
 	r := Request{
-		requestId:    h.RequestId,
-		userId:       h.UserId,
-		status:       h.Status,
-		userAgent:    h.UserAgent,
-		version:      h.Version,
-		ip:           h.IP,
-		method:       h.Method,
-		location:     h.Location,
-		factors:      h.Factors,
-		operations:   h.Operations,
-		demographics: h.Demographics,
-		profile:      h.Profile,
-		root:         h.Root,
-		referrer:     h.Referrer,
+		requestId:  h.RequestId,
+		userId:     h.UserId,
+		status:     h.Status,
+		userAgent:  h.UserAgent,
+		version:    h.Version,
+		ip:         h.IP,
+		method:     h.Method,
+		location:   h.Location,
+		operations: h.Operations,
+		groups:     h.Groups,
+		profile:    h.Profile,
+		root:       h.Root,
+		referrer:   h.Referrer,
 	}
 
 	r.url, _ = url.Parse(h.URL)

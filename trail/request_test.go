@@ -93,15 +93,13 @@ func TestNewRequest(t *testing.T) {
 		req.Recover(nil)
 
 		t.Run("can set request properties", func(t *testing.T) {
-			req.AddFactors(uuid.New())
-			req.AddDemographics(uuid.New())
+			req.AddGroups("group")
 			req.SetLocation(&Location{})
 			req.SetStatus(200)
-			req.SetUserId(uuid.New())
+			req.SetUserId("user")
 
 			assert.NotNil(t, req.UserId())
-			assert.NotEmpty(t, req.Factors())
-			assert.NotEmpty(t, req.Demographics())
+			assert.NotEmpty(t, req.Groups())
 			assert.NotNil(t, req.Location())
 			assert.Equal(t, 200, req.Status())
 
@@ -115,7 +113,7 @@ func TestNewRequest(t *testing.T) {
 
 		t.Run("can add response", func(t *testing.T) {
 			req, _ := NewRequest(w, r, "1.0.0")
-			w.Header().Set("Request-Trail", "KLUv/UQAVQLdCgAy2UchQGkrAG2gmO1YTbhx7HPCGS/J3AQIx3HZZD8ceXHppasID3xdFnp0Ash82IOZU3IGT1NuKn10Zth4X1tKGcxgU5Adh3fs4k2J0+EbITlUqkgiPRy+Kk0jc/RlJTLNnQL4hjazsHTzOcShXsvtDnDrWK1Nz7FVfUTm1WRywESaWBB6Hj2PA/9elI4FsEKY3NjLba+2NrEZN7mUHJvyDnxDlyojcvQ4NcpFcXQBwwJCgQDBcPhWJMhCmaMvQxmJSY5em64Ah1fQxdHZYOM4vLIkDW2FI+YE3yxqrM3Rj/la4hbdQtw267gSmWsRqntnau+YLMauuyQOX5VODNBuFkdvNZlcMT2ZkE3t4r631rKUb+N8K0lEO/w01KYXCU3vBBUAT5dFCDSiCzqMZADDw1Blw09FwVocdChWVRkB70JJgueV2IYGRhCC/MJrM0KCEMvnAsEtDnSnGWGuPEE=")
+			w.Header().Set("Request-Trail", "KLUv/UQAyAFtCQDilD8kEGusAIj7D0lI+z3b+EhLuHpxjWCuqtJeBdjAXbzivqqqqpo02+Hj8Tgc2GL3Ns6vXWtPXe/4l9J6l7ApTJTT0XePkZ34luZ5JAKjwkxkGSEmeU98SRKT8/uqoFujay/KgG1hV8TQAJdkw0iJyKmZlNeOJN+U0fImSSLvSWYjynwcEWavIfBtbYzebZvG1/gWy2il7jbtRgxq3T0A0SAtHFyI89uqJlqxuy9QgQlW3f3avofzrZrdHRogOH/Sxu3r7hFGiJzvoJWtvXAXY8K32Y2uvXttm0V9H6XOv46mBGrb7O7PUqBYOLMxYMjHgXouFEqCSpw/Edd2ptD1Wg8Afa4xWhhLxQzDbCDLAvXClr1UGQYVwp7JHEKqeS38ukL7oikxra5NzCYUEnRnOA==")
 			req.AddResponseHeaders(w.Header())
 		})
 	})

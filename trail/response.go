@@ -20,7 +20,7 @@ func (w *httpSpanWriter) WriteHeader(statusCode int) {
 		w.Header().Del("Request-Trail")
 	}
 
-	w.Header().Set("Request-Id", w.r.RequestId().String())
+	w.Header().Set("Request-Id", w.r.RequestId())
 	w.w.WriteHeader(statusCode)
 }
 
