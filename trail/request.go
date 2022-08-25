@@ -13,7 +13,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/klauspost/compress/zstd"
-	"github.com/lithammer/shortuuid"
+	"github.com/lithammer/shortuuid/v4"
 )
 
 var (
