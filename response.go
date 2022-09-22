@@ -23,7 +23,10 @@ func Send(w http.ResponseWriter, r *http.Request, raw interface{}) {
 		return
 	}
 
-	newHeaderEncoder(w).encode(raw)
+	if headersOnly := newHeaderEncoder(w).encode(raw); headersOnly {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	body, content, err := body(r, raw)
 	if err != nil {
@@ -87,17 +90,18 @@ type headerEncoder struct {
 	w http.ResponseWriter
 }
 
-func (e headerEncoder) encode(v interface{}) {
+func (e headerEncoder) encode(v interface{}) bool {
+	headersOnly := true
 	rv := reflect.Indirect(reflect.ValueOf(v))
 	if rv.Kind() != reflect.Struct {
-		return
+		return false
 	}
 
 	t := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
 		v := rv.Field(i)
 		if v.CanInterface() && v.Kind() == reflect.Struct {
-			e.encode(v.Interface())
+			headersOnly = headersOnly && e.encode(v.Interface())
 			continue
 		}
 
@@ -120,8 +124,12 @@ func (e headerEncoder) encode(v interface{}) {
 			default:
 				e.w.Header().Set(key, fmt.Sprintf("%s", v.Interface()))
 			}
+		} else {
+			headersOnly = false
 		}
 	}
+
+	return headersOnly
 }
 
 // newHeaderEncoder creates a new header decoder instance

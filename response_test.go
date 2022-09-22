@@ -76,7 +76,7 @@ func TestSend(t *testing.T) {
 		}
 
 		Send(w, req, response)
-		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, http.StatusNoContent, w.Code)
 		assert.Equal(t, "foo", w.Header().Get("request-id"))
 		assert.Equal(t, []string{"bar"}, w.Header().Values("names"))
 		assert.Empty(t, w.Header().Get("empty"))
