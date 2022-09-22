@@ -87,28 +87,10 @@ func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 }
 
-// HTTPCommand creates a http command handler from a command
-func HTTPCommand[command any](fn func(context.Context, command) error) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req command
-		if err := Parse(w, r, &req); err != nil {
-			Send(w, r, err)
-			return
-		}
-
-		if err := fn(r.Context(), req); err != nil {
-			Send(w, r, err)
-			return
-		}
-
-		Send(w, r, nil)
-	}
-}
-
-// HTTPQuery creates a http query handler from a query
-func HTTPQuery[query any, response any](fn func(context.Context, query) (response, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var req query
+// Rte a request
+func Rte[Q any, R any](h RouteHandler, method, endpoint string, fn func(context.Context, Q) (R, error), middlewares ...Middleware) {
+	h.Route(method, endpoint, func(w http.ResponseWriter, r *http.Request) {
+		var req Q
 		if err := Parse(w, r, &req); err != nil {
 			Send(w, r, err)
 			return
@@ -121,5 +103,10 @@ func HTTPQuery[query any, response any](fn func(context.Context, query) (respons
 		}
 
 		Send(w, r, resp)
-	}
+	}, middlewares...)
+}
+
+// RouteHandler a handler for routing http requests
+type RouteHandler interface {
+	Route(method, endpoint string, handlerFunc http.HandlerFunc, middlewares ...Middleware)
 }

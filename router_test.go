@@ -176,74 +176,19 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 }
 
-func TestHTTPCommand(t *testing.T) {
-	t.Run("parse body error", func(t *testing.T) {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("PUT", "/test", strings.NewReader(`{}`))
-
-		cmd := HTTPCommand(func(ctx context.Context, command int) error { return nil })
-		cmd.ServeHTTP(resp, req)
-
-		assert.Equal(t, 400, resp.Code)
-	})
-
+func TestRte(t *testing.T) {
 	t.Run("parse url error", func(t *testing.T) {
+		r := NewRouter("0")
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
-		req.Header.Set("Content-Type", "application/json")
+		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
 
 		type test struct {
 			Id int `json:"id"`
 		}
 
-		cmd := HTTPCommand(func(ctx context.Context, command test) error { return nil })
-		cmd.ServeHTTP(resp, req)
-
-		assert.Equal(t, 400, resp.Code)
-	})
-
-	t.Run("handler error", func(t *testing.T) {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
-		req.Header.Set("Content-Type", "application/json")
-
-		type test struct {
-			Id string `json:"id"`
-		}
-
-		cmd := HTTPCommand(func(ctx context.Context, command test) error { return trail.NewError("an error") })
-		cmd.ServeHTTP(resp, req)
-
-		assert.Equal(t, 500, resp.Code)
-	})
-
-	t.Run("ok", func(t *testing.T) {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("PUT", "/test?id=one", strings.NewReader(`{}`))
-		req.Header.Set("Content-Type", "application/json")
-
-		type test struct {
-			Id string `json:"id"`
-		}
-
-		cmd := HTTPCommand(func(ctx context.Context, command test) error { return nil })
-		cmd.ServeHTTP(resp, req)
-
-		assert.Equal(t, 204, resp.Code)
-	})
-}
-
-func TestHTTPQuery(t *testing.T) {
-	t.Run("parse url error", func(t *testing.T) {
-		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/test?id=one", nil)
-
-		type test struct {
-			Id int `json:"id"`
-		}
-
-		query := HTTPQuery(func(ctx context.Context, query test) (interface{}, error) { return nil, nil })
-		query.ServeHTTP(resp, req)
+		h := func(ctx context.Context, query test) (interface{}, error) { return nil, nil }
+		Rte(r, "GET", "/test", h)
+		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 400, resp.Code)
 	})
@@ -255,7 +200,7 @@ func TestHTTPQuery(t *testing.T) {
 
 		type query struct{}
 		h := func(ctx context.Context, query query) (string, error) { return "", trail.NewError("an error") }
-		r.Route("GET", "/test", HTTPQuery(h))
+		Rte(r, "GET", "/test", h)
 		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 500, resp.Code)
@@ -277,9 +222,9 @@ func TestHTTPQuery(t *testing.T) {
 			assert.Equal(t, "foo", query.AccessToken)
 			return nil, nil
 		}
-		r.Route("GET", "/test", HTTPQuery(h))
-		r.ServeHTTP(resp, req)
 
+		Rte(r, "GET", "/test", h)
+		r.ServeHTTP(resp, req)
 		assert.Equal(t, 204, resp.Code)
 	})
 }
