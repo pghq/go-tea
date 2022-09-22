@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+
 	"github.com/gorilla/schema"
 	"github.com/rs/cors"
 
@@ -74,7 +75,29 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		}
 	}
 
+	ParseHeaders(r, v)
 	return parseURL(r, v)
+}
+
+// ParseHeaders decode http request headers
+func ParseHeaders(r *http.Request, v interface{}) {
+	newHeaderDecoder(r).decode(v)
+}
+
+// ParsePath decode http path
+func ParsePath(r *http.Request, v interface{}) error {
+	vars := mux.Vars(r)
+	parameters := make(url.Values)
+	for key, value := range vars {
+		parameters.Set(key, value)
+	}
+
+	return pathDec.Decode(v, parameters)
+}
+
+// ParseQuery decode http query
+func ParseQuery(r *http.Request, v interface{}) error {
+	return queryDec.Decode(v, r.URL.Query())
 }
 
 // parseURL is a method to decode a http request query and path into a value
@@ -86,24 +109,11 @@ func parseURL(r *http.Request, v interface{}) error {
 		return trail.NewError("no value")
 	}
 
-	newHeaderDecoder(r).decode(v)
-
-	if err := queryDec.Decode(v, r.URL.Query()); err != nil {
+	if err := ParseQuery(r, v); err != nil {
 		return trail.ErrorBadRequest(err)
 	}
 
-	// path returns a map of parameters within the path
-	path := func(r *http.Request) url.Values {
-		vars := mux.Vars(r)
-		parameters := make(url.Values)
-		for key, value := range vars {
-			parameters.Set(key, value)
-		}
-
-		return parameters
-	}
-
-	if err := pathDec.Decode(v, path(r)); err != nil {
+	if err := ParsePath(r, v); err != nil {
 		return trail.ErrorBadRequest(err)
 	}
 
