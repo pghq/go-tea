@@ -61,7 +61,7 @@ func Parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		ct := r.Header.Get("Content-Type")
 
 		switch {
-		case strings.Contains(ct, "application/json"):
+		case ct == "" || strings.Contains(ct, "application/json"):
 			if err := json.NewDecoder(body).Decode(v); err != nil {
 				return trail.ErrorBadRequest(err)
 			}

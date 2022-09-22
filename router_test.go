@@ -209,21 +209,25 @@ func TestRte(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		r := NewRouter("0", WithServicePrefix("/service"))
 		resp := httptest.NewRecorder()
-		req := httptest.NewRequest("GET", "/service/v0/test?id=one", nil)
+		req := httptest.NewRequest("POST", "/service/v0/tests/one/subtests?id=one", strings.NewReader(`{"body": "foo"}`))
 		req.Header.Set("Authorization", "Bearer foo")
 
 		type test struct {
 			AccessToken string `auth:"bearer"`
+			TestId      string `path:"testId"`
 			Id          string `json:"id"`
+			Body        string `json:"body"`
 		}
 
 		h := func(ctx context.Context, query test) (interface{}, error) {
+			assert.Equal(t, "one", query.TestId)
 			assert.Equal(t, "one", query.Id)
 			assert.Equal(t, "foo", query.AccessToken)
+			assert.Equal(t, "foo", query.Body)
 			return nil, nil
 		}
 
-		Rte(r, "GET", "/test", h)
+		Rte(r, "POST", "/tests/{testId}/subtests", h)
 		r.ServeHTTP(resp, req)
 		assert.Equal(t, 204, resp.Code)
 	})
