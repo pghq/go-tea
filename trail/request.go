@@ -297,7 +297,7 @@ func NewRequest(w http.ResponseWriter, r *http.Request, version string) (*Reques
 		req = data.Request()
 	} else {
 		req = Request{
-			requestId: shortuuid.NewWithNamespace(version),
+			requestId: shortuuid.New(),
 			userAgent: r.UserAgent(),
 			url:       r.URL,
 			method:    r.Method,
