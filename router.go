@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/hashicorp/go-version"
 
 	"github.com/pghq/go-tea/health"
 	"github.com/pghq/go-tea/trail"
@@ -39,7 +38,7 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // NewRouter constructs a new mux based Router
-func NewRouter(semver string, opts ...RouterOption) *Router {
+func NewRouter(major int, version string, opts ...RouterOption) *Router {
 	r := Router{mux: mux.NewRouter().StrictSlash(true)}
 	for _, opt := range opts {
 		opt(&r)
@@ -50,18 +49,15 @@ func NewRouter(semver string, opts ...RouterOption) *Router {
 		r.routes = r.routes.PathPrefix(r.servicePrefix).Subrouter()
 	}
 
-	hc := health.NewService(semver)
+	hc := health.NewService(version)
 	r.Route("GET", "/health/status", func(w http.ResponseWriter, r *http.Request) {
 		Send(w, r, hc.Status())
 	})
 
-	v, _ := version.NewVersion(semver)
-	if v != nil {
-		r.routes = r.routes.PathPrefix(fmt.Sprintf("/v%d", v.Segments()[0])).Subrouter()
-	}
+	r.routes = r.routes.PathPrefix(fmt.Sprintf("/v%d", major)).Subrouter()
 	r.mux.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	r.mux.MethodNotAllowedHandler = http.HandlerFunc(MethodNotAllowedHandler)
-	r.Middleware(MiddlewareFunc(trail.NewTraceMiddleware(v.String(), true)))
+	r.Middleware(MiddlewareFunc(trail.NewTraceMiddleware(version, true)))
 	return &r
 }
 
@@ -87,8 +83,8 @@ func MethodNotAllowedHandler(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte(http.StatusText(http.StatusMethodNotAllowed)))
 }
 
-// Rte a request
-func Rte[Q any, R any](h RouteHandler, method, endpoint string, fn func(context.Context, Q) (R, error), middlewares ...Middleware) {
+// Go handle a http request
+func Go[Q any, R any](h RouteHandler, method, endpoint string, fn func(context.Context, Q) (R, error), middlewares ...Middleware) {
 	h.Route(method, endpoint, func(w http.ResponseWriter, r *http.Request) {
 		var req Q
 		if err := Parse(w, r, &req); err != nil {

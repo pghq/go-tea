@@ -8,8 +8,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/hashicorp/go-version"
-
 	"github.com/pghq/go-tea/health"
 	"github.com/pghq/go-tea/trail"
 )
@@ -87,18 +85,12 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewProxy creates a new multi-host reverse proxy
-func NewProxy(semver string) *Proxy {
-	v, _ := version.NewVersion(semver)
-	cv := semver
-	if v != nil {
-		cv = v.String()
-	}
-
+func NewProxy(version string) *Proxy {
 	p := Proxy{
 		directors: make(map[string]*httputil.ReverseProxy),
 		cors:      NewCORSMiddleware(),
-		trace:     trail.NewTraceMiddleware(cv, false),
-		health:    health.NewService(cv),
+		trace:     trail.NewTraceMiddleware(version, false),
+		health:    health.NewService(version),
 	}
 
 	return &p

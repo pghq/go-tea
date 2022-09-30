@@ -17,7 +17,7 @@ import (
 func TestNewRouter(t *testing.T) {
 	t.Parallel()
 	t.Run("can create instance", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		assert.NotNil(t, r)
 	})
 }
@@ -26,7 +26,7 @@ func TestHealth(t *testing.T) {
 	t.Parallel()
 
 	t.Run("get", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/health/status").
@@ -39,7 +39,7 @@ func TestHealth(t *testing.T) {
 func TestRouter_Route(t *testing.T) {
 	t.Parallel()
 	t.Run("get", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
@@ -50,7 +50,7 @@ func TestRouter_Route(t *testing.T) {
 	})
 
 	t.Run("post", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("POST").
 			Path("/v0/tests").
@@ -62,7 +62,7 @@ func TestRouter_Route(t *testing.T) {
 	})
 
 	t.Run("put", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("PUT").
 			Path("/v0/tests/test").
@@ -74,7 +74,7 @@ func TestRouter_Route(t *testing.T) {
 	})
 
 	t.Run("patch", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("PATCH").
 			Path("/v0/tests/test").
@@ -86,7 +86,7 @@ func TestRouter_Route(t *testing.T) {
 	})
 
 	t.Run("delete", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("DELETE").
 			Path("/v0/tests/test").
@@ -100,7 +100,7 @@ func TestRouter_Route(t *testing.T) {
 func TestRouter_Middleware(t *testing.T) {
 	t.Parallel()
 	t.Run("processes handler", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		r.Middleware(MiddlewareFunc(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(204)
@@ -128,7 +128,7 @@ func TestNotFoundHandler(t *testing.T) {
 	})
 
 	t.Run("routes not found", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests/test").
@@ -140,7 +140,7 @@ func TestNotFoundHandler(t *testing.T) {
 	})
 
 	t.Run("health check", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/health/status").
@@ -163,7 +163,7 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 
 	t.Run("routes method not allowed", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		req := NewRequestBuilder(t).
 			Method("GET").
 			Path("/v0/tests").
@@ -176,9 +176,9 @@ func TestMethodNotAllowedHandler(t *testing.T) {
 	})
 }
 
-func TestRte(t *testing.T) {
+func TestGo(t *testing.T) {
 	t.Run("parse url error", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
 
@@ -187,27 +187,27 @@ func TestRte(t *testing.T) {
 		}
 
 		h := func(ctx context.Context, query test) (interface{}, error) { return nil, nil }
-		Rte(r, "GET", "/test", h)
+		Go(r, "GET", "/test", h)
 		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 400, resp.Code)
 	})
 
 	t.Run("handler error", func(t *testing.T) {
-		r := NewRouter("0")
+		r := NewRouter(0, "abc")
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v0/test?id=one", nil)
 
 		type query struct{}
 		h := func(ctx context.Context, query query) (string, error) { return "", trail.NewError("an error") }
-		Rte(r, "GET", "/test", h)
+		Go(r, "GET", "/test", h)
 		r.ServeHTTP(resp, req)
 
 		assert.Equal(t, 500, resp.Code)
 	})
 
 	t.Run("ok", func(t *testing.T) {
-		r := NewRouter("0", WithServicePrefix("/service"))
+		r := NewRouter(0, "abc", WithServicePrefix("/service"))
 		resp := httptest.NewRecorder()
 		req := httptest.NewRequest("POST", "/service/v0/tests/one/subtests?id=one", strings.NewReader(`{"body": "foo"}`))
 		req.Header.Set("Authorization", "Bearer foo")
@@ -227,7 +227,7 @@ func TestRte(t *testing.T) {
 			return nil, nil
 		}
 
-		Rte(r, "POST", "/tests/{testId}/subtests", h)
+		Go(r, "POST", "/tests/{testId}/subtests", h)
 		r.ServeHTTP(resp, req)
 		assert.Equal(t, 204, resp.Code)
 	})
